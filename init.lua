@@ -84,81 +84,46 @@ I hope you enjoy your Neovim journey,
 P.S. You can delete this when you're done too. It's your config now! :)
 --]]
 
--- Set <space> as the leader key
--- See `:help mapleader`
---  NOTE: Must happen before plugins are loaded (otherwise wrong leader will be used)
-vim.g.mapleader = ' '
-vim.g.maplocalleader = ' '
+-- NOTE: :help localleader
+vim.g.mapleader = ' ' -- Set <space> as the leader key
+vim.g.maplocalleader = ' ' --- Set <space> as the local leader key
+vim.g.have_nerd_font = true -- Set to true if you have a Nerd Font installed
 
--- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = false
-
--- [[ Setting options ]]
--- See `:help vim.opt`
--- NOTE: You can change these options as you wish!
---  For more options, you can see `:help option-list`
-
--- Make line numbers default
-vim.opt.number = true
--- You can also add relative line numbers, to help with jumping.
---  Experiment for yourself to see if you like it!
--- vim.opt.relativenumber = true
-
--- Enable mouse mode, can be useful for resizing splits for example!
-vim.opt.mouse = 'a'
-
--- Don't show the mode, since it's already in the status line
-vim.opt.showmode = false
-
+-- NOTE::help option-list
+--
 -- Sync clipboard between OS and Neovim.
---  Remove this option if you want your OS clipboard to remain independent.
---  See `:help 'clipboard'`
-vim.opt.clipboard = 'unnamedplus'
-
--- Enable break indent
-vim.opt.breakindent = true
-
--- Save undo history
-vim.opt.undofile = true
-
--- Case-insensitive searching UNLESS \C or one or more capital letters in the search term
-vim.opt.ignorecase = true
-vim.opt.smartcase = true
-
--- Keep signcolumn on by default
-vim.opt.signcolumn = 'yes'
-
--- Decrease update time
-vim.opt.updatetime = 250
-
--- Decrease mapped sequence wait time
--- Displays which-key popup sooner
-vim.opt.timeoutlen = 300
-
--- Configure how new splits should be opened
-vim.opt.splitright = true
+-- Remove this option if you want your OS clipboard to remain independent.
+vim.opt.clipboard = 'unnamedplus' --  See `:help 'clipboard'`
+vim.opt.updatetime = 250 -- Decrease update time
+vim.opt.timeoutlen = 300 -- Decrease mapped sequence wait time : Displays which-key popup sooner
+vim.opt.number = true
+vim.opt.relativenumber = true
+vim.opt.termguicolors = true -- yes use tempr gui colors
+vim.opt.wrap = false -- don't wrap lines
+vim.opt.fillchars:append { diff = '/' } -- fillchars for diffview?
+vim.opt.mouse = 'a' -- Enable mouse mode, can be useful for resizing splits for example!
+vim.opt.showmode = false -- Don't show the mode, since it's already in status line
+vim.opt.breakindent = true -- Enable break indent
+vim.opt.undofile = true -- Save undo history
+vim.opt.ignorecase = true -- case insensitive search
+vim.opt.smartcase = true -- ... actually lets make it sensitive if an upper case is involved
+-- vim.opt.smartindent = true -- ... smart indentation --- need to figure out what to do, want vscode like auto indenting when opening a function or { ... local foo = function() <cr> does not indend body of function in lua for instance
+vim.opt.signcolumn = 'yes' -- Keep signcolumn on by default
+vim.opt.splitright = true -- Configure how new splits should be opened
 vim.opt.splitbelow = true
-
--- Sets how neovim will display certain whitespace characters in the editor.
---  See `:help 'list'`
---  and `:help 'listchars'`
-vim.opt.list = true
+vim.opt.list = true -- Sets how neovim will display certain whitespace in the editor.
 vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
+vim.opt.inccommand = 'split' -- Preview substitutions live, as you type!
+-- vim.opt.cursorline = true -- Show which line your cursor is on
+vim.opt.scrolloff = 10 -- Minimal number of screen lines to keep above and below the cursor.
+vim.opt.hlsearch = true -- Set highlight on search, but clear on pressing <Esc> in normal mode
 
--- Preview substitutions live, as you type!
-vim.opt.inccommand = 'split'
+--========================= KEYMAPS =======================
+--
+-- Those Keymaps should be independent of Plugins
+--
+--
 
--- Show which line your cursor is on
-vim.opt.cursorline = true
-
--- Minimal number of screen lines to keep above and below the cursor.
-vim.opt.scrolloff = 10
-
--- [[ Basic Keymaps ]]
---  See `:help vim.keymap.set()`
-
--- Set highlight on search, but clear on pressing <Esc> in normal mode
-vim.opt.hlsearch = true
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 
 -- Diagnostic keymaps
@@ -167,19 +132,16 @@ vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = 'Go to next [D]iagn
 vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Show diagnostic [E]rror messages' })
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
 
--- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
--- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
--- is not what someone will guess without a bit more experience.
---
--- NOTE: This won't work in all terminal emulators/tmux/etc. Try your own mapping
--- or just use <C-\><C-n> to exit terminal mode
 vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
 
--- TIP: Disable arrow keys in normal mode
--- vim.keymap.set('n', '<left>', '<cmd>echo "Use h to move!!"<CR>')
--- vim.keymap.set('n', '<right>', '<cmd>echo "Use l to move!!"<CR>')
--- vim.keymap.set('n', '<up>', '<cmd>echo "Use k to move!!"<CR>')
--- vim.keymap.set('n', '<down>', '<cmd>echo "Use j to move!!"<CR>')
+-- NOTE: swap lines like in vscode
+--
+--   we've bound <M-*> so the `Alt` or `Modifier` key, however, see :h :map-alt and you'll notice that
+--   nvim is not able to distinguish between `Esc` and `Alt` if key press is fast enough, we'll just live
+--   with this, it rarely causes issues, but if you press `Esc` + j  or `Esc + k` very quickly while
+--   in normal mode, you'll also trigger the below keymaps.
+vim.keymap.set('n', '<C-j>', ':m+1<cr>', { desc = 'swap line with line below' }) -- vscode <alt> + <up>
+vim.keymap.set('n', '<C-k>', ':m-2<cr>', { desc = 'swap line with line above' }) -- vscode <alt> + <down>
 
 -- Keybinds to make split navigation easier.
 --  Use CTRL+<hjkl> to switch between windows
@@ -189,6 +151,11 @@ vim.keymap.set('n', '<C-h>', '<C-w><C-h>', { desc = 'Move focus to the left wind
 vim.keymap.set('n', '<C-l>', '<C-w><C-l>', { desc = 'Move focus to the right window' })
 vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
 vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
+
+-- useful for figuring out what higlight groups are relevant for stuff under cursor
+vim.keymap.set('n', '<leader>I', function()
+  vim.show_pos()
+end)
 
 -- [[ Basic Autocommands ]]
 --  See `:help lua-guide-autocommands`
@@ -405,6 +372,130 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sn', function()
         builtin.find_files { cwd = vim.fn.stdpath 'config' }
       end, { desc = '[S]earch [N]eovim files' })
+    end,
+  },
+
+  -- TODO: CONSIDER neogit ....
+  -- NOTE: Git plugins ...
+  {
+    'rbong/vim-flog',
+    dependencies = {
+      'tpope/vim-fugitive',
+      'sindrets/diffview.nvim',
+    },
+    config = function()
+      vim.keymap.set('n', '<leader>gl', ':Flog -all -date=relative<cr>', { desc = '[G]it [L]og' })
+      -- vim.keymap.set('n', '<leader>gl', ':Flog -format=%ar%x20[%h]%x20%d%x20%an <cr>', { desc = '[G]it [L]og' })
+      vim.keymap.set('n', '<leader>gs', ':Git<cr>', { desc = '[G]it [S]tatus' })
+
+      -- Returns the selected commit by fugitive, the one selected by hitting enter
+      -- ... we are able to do this by finding the loaded buffer for fugitive
+      -- that flog uses, and extract its commit hash
+      --- @return string
+      local function flogSelectedCommit()
+        local buffers = vim.api.nvim_list_bufs()
+        for _, buffer in ipairs(buffers) do
+          local name = vim.api.nvim_buf_get_name(buffer)
+          local loaded = vim.api.nvim_buf_is_loaded(buffer)
+          if loaded and name then
+            local isFugitive = string.match(name, 'fugitive:.*git//%x*')
+            if isFugitive then
+              local h = string.match(name, '%x*$')
+              if h then
+                return string.sub(h, 1, 7)
+              end
+            end
+          end
+        end
+        return ''
+      end
+
+      -- get the commit under the cursor
+      --- @return boolean, string asdfasdf
+      local function flogCommitUnderCursor()
+        return pcall(vim.fn['flog#Format'], '%H')
+      end
+
+      -- NOTE: opens up diffview relative to commit under cursor
+      vim.keymap.set('n', ',', function()
+        local ok, commit = flogCommitUnderCursor()
+        if ok then
+          return ':DiffviewOpen ' .. commit .. '<cr>'
+        end
+      end, { expr = true, desc = 'display changes of HEAD relative to commit under cursor' })
+
+      -- NOTE: opens up diffview for change introduced by commit under cursor
+      vim.keymap.set('n', ';', function()
+        local ok, commit = flogCommitUnderCursor()
+        if ok then
+          return ':DiffviewOpen ' .. commit .. '^!<cr>'
+        end
+      end, { expr = true, desc = 'display changes introduced by commit under cursor' })
+
+      vim.keymap.set('n', '-', function()
+        local ok, cc = flogCommitUnderCursor()
+        if ok then
+          local h = flogSelectedCommit()
+          if h == '' then
+            return
+          end
+          return ':DiffviewOpen ' .. cc .. '..' .. h .. '<cr>'
+        end
+      end, { expr = true })
+    end,
+  },
+
+  {
+    'lewis6991/gitsigns.nvim',
+    opts = {
+      sign_priority = 9,
+      signs = {
+        add = { text = '+' },
+        change = { text = '~' },
+        delete = { text = '_' },
+        topdelete = { text = '‾' },
+        changedelete = { text = '~' },
+      },
+      current_line_blame_opts = {
+        delay = 200,
+      },
+    },
+    init = function()
+      -- hunks
+      vim.keymap.set('n', '<leader>gn', ':Gitsigns next_hunk<cr>', { desc = '[Git] [N]ext diff hunk' })
+      vim.keymap.set('n', '<leader>gp', ':Gitsigns preview_hunk<cr>', { desc = '[G]it [P]review hunk' })
+      vim.keymap.set('n', '<leader>gr', ':Gitsigns reset_hunk<cr>', { desc = '[G]it [R]eset hunk' })
+
+      -- blame
+      vim.keymap.set('n', '<leader>gb', ':Gitsigns toggle_current_line_blame<CR>', { desc = '[G]it [B]lame toggle' })
+
+      -- diff this
+      vim.keymap.set('n', '<leader>dt', ':Gitsigns diffthis<cr>', { desc = 'See changes in the current buffer' })
+    end,
+  },
+
+  {
+    'sindrets/diffview.nvim',
+    dependencies = {
+      'nvim-web-devicons',
+    },
+    opts = {
+      enhanced_diff_hl = true,
+    },
+    init = function()
+      -- <leader>gd should toggle diffview
+      vim.keymap.set('n', '<leader>gd', function()
+        -- first need to focus files panel so we can read expected diffview name of buffer
+        vim.cmd 'DiffviewFocusFiles'
+        local current_buffer = vim.api.nvim_get_current_buf()
+        local current_buffer_name = vim.api.nvim_buf_get_name(current_buffer)
+        local diffviewOpen = string.match(current_buffer_name, '^diffview.*')
+        if diffviewOpen then
+          vim.cmd 'DiffviewClose'
+        else
+          vim.cmd 'DiffviewOpen'
+        end
+      end, { desc = '[G]it [D]iff' })
     end,
   },
 
