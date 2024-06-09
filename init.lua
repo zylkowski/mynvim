@@ -975,6 +975,12 @@ require('lazy').setup({
   {
     'akinsho/toggleterm.nvim',
     version = '*',
+    init = function()
+      require('toggleterm').setup {
+        -- size can be a number or function which is passed the current terminal
+        open_mapping = [[<leader>tt]], -- or { [[<c-\>]], [[<c-¥>]] } if you also use a Japanese keyboard.
+      }
+    end,
   },
   -- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
