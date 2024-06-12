@@ -115,10 +115,27 @@ vim.opt.list = true -- Sets how neovim will display certain whitespace in the ed
 vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
 vim.opt.inccommand = 'split' -- Preview substitutions live, as you type!
 vim.opt.cursorline = true -- Show which line your cursor is on
-vim.opt.scrolloff = 15 -- Minimal number of screen lines to keep above and below the cursor.
+vim.opt.scrolloff = 16 -- Minimal number of screen lines to keep above and below the cursor.
 vim.opt.hlsearch = true -- Set highlight on search, but clear on pressing <Esc> in normal mode
 
-vim.diagnostic.config { virtual_text = { virt_text_pos = 'right_align' } } -- Make error highlights right aligned
+vim.diagnostic.config {
+  virtual_text = {
+    virt_text_pos = 'right_align',
+    severity = {
+      vim.diagnostic.severity.ERROR,
+      vim.diagnostic.severity.WARN,
+      vim.diagnostic.severity.INFO,
+    },
+    underline = {
+      severity = vim.diagnostic.severity.WARN,
+    },
+    format = function(_diagnostic)
+      return ''
+    end,
+    signs = { text = { [vim.diagnostic.severity.ERROR] = '❌', [vim.diagnostic.severity.WARN] = '⚠: ' } },
+  },
+  float = { scope = 'l' },
+} -- Make error highlights right aligned
 
 --========================= KEYMAPS =======================
 --
@@ -127,13 +144,50 @@ vim.diagnostic.config { virtual_text = { virt_text_pos = 'right_align' } } -- Ma
 --
 
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
+vim.keymap.set('n', '<Esc><Esc>', function()
+  local ntabs = #vim.api.nvim_list_tabpages()
+  if ntabs <= 1 then
+    return
+  end
 
-vim.keymap.set('n', '<X1Mouse>', '<C-o>') -- Use mouse button to go out. Really useful when quickly traversing unknown code. Doesn't work for some reason :shrug:
-vim.keymap.set('n', '<M-j>', '12j')
-vim.keymap.set('n', '<M-k>', '12k')
+  -- NOTE: we avoid closing tab if current window is relative
+  local not_relative = vim.api.nvim_win_get_config(0).relative == ''
+  if not_relative then
+    vim.cmd [[:tabc]]
+  end
+end, {
+  desc = 'Close current tab',
+})
+
+vim.keymap.set('n', 'yp', 'yy<cr>kp<cr>k', { desc = '[Y]ank [P]aste - Duplicate Line' })
+vim.keymap.set('n', 'le', 'o<Esc>', { desc = '[L]ine [E]mpty' })
+-- vim.keymap.set('n', 'p', 'p<leader>f') -- autoformat after paste/put
+
+-- vim.keymap.set('n', '<X1Mouse>', '<C-o>') -- Use mouse button to go out. Really useful when quickly traversing unknown code. Doesn't work for some reason :shrug:
+-- vim.keymap.set('n', '<M-j>', '12j')
+-- vim.keymap.set('n', '<M-k>', '12k')
+do
+  local dt = 10
+  local n = 10
+
+  --- @param dir 'j' | 'k'
+  local function jump(dir)
+    return function()
+      local d = vim.api.nvim_get_mode()
+      for i = 0, n do
+        vim.fn.timer_start(i * dt, function()
+          vim.api.nvim_feedkeys(dir, d.mode, false)
+        end)
+      end
+    end
+  end
+
+  vim.keymap.set({ 'v', 'n' }, '<M-j>', jump 'j')
+  vim.keymap.set({ 'v', 'n' }, '<M-k>', jump 'k')
+end
 
 -- NOTE: nice way to escape lots of plugins like diffview and flog
-vim.keymap.set('n', '<Esc><Esc>', ':tabc<CR>')
+-- vim.keymap.set('n', '<Esc><Esc>', ':tabc<CR>')
 
 -- Diagnostic keymaps
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous [D]iagnostic message' })
@@ -142,7 +196,6 @@ vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Show diagn
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
 
 vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
-vim.keymap.set({ 't', 'n' }, '<leader>tt', ':terminal<cr>', { desc = '[T]oggle [T]erminal' })
 
 -- NOTE: swap lines like in vscode
 --
@@ -457,9 +510,9 @@ require('lazy').setup({
         topdelete = { text = '‾' },
         changedelete = { text = '~' },
       },
+      current_line_blame = true,
       current_line_blame_opts = {
         delay = 200,
-        current_line_blame = true,
       },
     },
     init = function()
@@ -629,6 +682,12 @@ require('lazy').setup({
               end,
             })
           end
+
+          -- Lets give the hover information stuff a bit more style
+          vim.lsp.handlers['textDocument/hover'] = vim.lsp.with(vim.lsp.handlers.hover, {
+            -- Use a sharp border with `FloatBorder` highlights
+            border = 'single',
+          })
 
           -- The following autocommand is used to enable inlay hints in your
           -- code, if the language server you are using supports them
@@ -901,7 +960,8 @@ require('lazy').setup({
       --  - va)  - [V]isually select [A]round [)]paren
       --  - yinq - [Y]ank [I]nside [N]ext [']quote
       --  - ci'  - [C]hange [I]nside [']quote
-      require('mini.ai').setup { n_lines = 500 }
+
+      require('mini.ai').setup { n_lines = 200 }
 
       -- Add/delete/replace surroundings (brackets, quotes, etc.)
       --
@@ -940,6 +1000,11 @@ require('lazy').setup({
       end, { silent = true, desc = 'jump to line of parent context' })
     end,
   },
+  -- {
+  --   'nvim-treesitter/nvim-treesitter-textobjects',
+  --   opts = {},
+  -- }, -- This plugin does not seem to work.
+
   { -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
     build = ':TSUpdate',
@@ -954,7 +1019,7 @@ require('lazy').setup({
         --  the list of additional_vim_regex_highlighting and disabled languages for indent.
         additional_vim_regex_highlighting = { 'ruby' },
       },
-      indent = { enable = true, disable = { 'ruby' } },
+      -- indent = { enable = true, disable = { 'ruby' } },
     },
     config = function(_, opts)
       -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
@@ -978,8 +1043,19 @@ require('lazy').setup({
     init = function()
       require('toggleterm').setup {
         -- size can be a number or function which is passed the current terminal
-        open_mapping = [[<leader>tt]], -- or { [[<c-\>]], [[<c-¥>]] } if you also use a Japanese keyboard.
+        open_mapping = [[<c-w>t]], -- or { [[<c-\>]], [[<c-¥>]] } if you also use a Japanese keyboard.
+        start_in_insert = false,
+        direction = 'vertical',
+        size = 80,
       }
+    end,
+  },
+  {
+    'ggandor/leap.nvim',
+    init = function()
+      vim.keymap.set({ 'n', 'x', 'o' }, '<leader>;', '<Plug>(leap)')
+      -- vim.keymap.set({'n', 'x', 'o'}, 'S',  '<Plug>(leap-backward)')
+      -- vim.keymap.set({'n', 'x', 'o'}, 'gs', '<Plug>(leap-from-window)')
     end,
   },
   -- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
