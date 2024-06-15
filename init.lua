@@ -159,10 +159,18 @@ end, {
   desc = 'Close current tab',
 })
 
-vim.keymap.set('n', 'yp', 'yy<cr>kp<cr>k', { desc = '[Y]ank [P]aste - Duplicate Line' })
-vim.keymap.set('n', 'le', 'o<Esc>', { desc = '[L]ine [E]mpty' })
--- vim.keymap.set('n', 'p', 'p<leader>f') -- autoformat after paste/put
+vim.keymap.set('v', '<leader>sc', '"hy:%s/<C-r>h//gc<left><left><left>', { desc = '[S]ubstitute [C]hange' })
+vim.keymap.set('v', '<leader>sa', '"hy:%s/<C-r>h/<C-r>h/gc<left><left><left>', { desc = '[S]ubstitute [A]ppend' })
 
+vim.keymap.set('n', '<leader>je', 'f=l', { desc = '[J]ump [E]quality' })
+vim.keymap.set('n', 'yp', 'yy<cr>kp<cr>k', { desc = '[Y]ank [P]aste - Duplicate Line' })
+-- vim.keymap.set('n', 'le', 'o<Esc>', { desc = '[L]ine [E]mpty' })
+
+vim.keymap.set('n', 'p', 'p<leader>f') -- autoformat after paste/put
+vim.keymap.set('n', '<C-w>n', ':tabnew<cr>', { desc = '[N]ew window' })
+
+vim.keymap.set({ 'v', 'n' }, '<M-h>', ':tabprevious<cr>')
+vim.keymap.set({ 'v', 'n' }, '<M-l>', ':tabNext<cr>')
 -- vim.keymap.set('n', '<X1Mouse>', '<C-o>') -- Use mouse button to go out. Really useful when quickly traversing unknown code. Doesn't work for some reason :shrug:
 -- vim.keymap.set('n', '<M-j>', '12j')
 -- vim.keymap.set('n', '<M-k>', '12k')
@@ -313,6 +321,7 @@ require('lazy').setup({
       -- visual mode
       require('which-key').register({
         ['<leader>h'] = { 'Git [H]unk' },
+        ['<leader>s'] = { '[S]ubstitute' },
       }, { mode = 'v' })
     end,
   },
@@ -898,7 +907,7 @@ require('lazy').setup({
 
           -- If you prefer more traditional completion keymaps,
           -- you can uncomment the following lines
-          --['<CR>'] = cmp.mapping.confirm { select = true },
+          ['<Tab>'] = cmp.mapping.confirm { select = true },
           --['<Tab>'] = cmp.mapping.select_next_item(),
           --['<S-Tab>'] = cmp.mapping.select_prev_item(),
 
@@ -907,6 +916,14 @@ require('lazy').setup({
           --  completions whenever it has completion options available.
           ['<C-Space>'] = cmp.mapping.complete {},
 
+          ['<Down>'] = cmp.mapping(function(fallback)
+            cmp.close()
+            fallback()
+          end, { 'i' }),
+          ['<Up>'] = cmp.mapping(function(fallback)
+            cmp.close()
+            fallback()
+          end, { 'i' }),
           -- Think of <c-l> as moving to the right of your snippet expansion.
           --  So if you have a snippet that's like:
           --  function $name($args)
