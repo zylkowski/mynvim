@@ -1052,10 +1052,15 @@ require('lazy').setup({
   },
   {
     'ggandor/leap.nvim',
-    init = function()
-      vim.keymap.set({ 'n', 'x', 'o' }, '<leader>;', '<Plug>(leap)')
-      -- vim.keymap.set({'n', 'x', 'o'}, 'S',  '<Plug>(leap-backward)')
-      -- vim.keymap.set({'n', 'x', 'o'}, 'gs', '<Plug>(leap-from-window)')
+    opts = {},
+    config = function()
+      local leap = require 'leap'
+      leap.opts.labels = 'sfnjklhodweimbuyvrgtaqpcxzSFNJKLHODWEIMBUYVRGTAQPCXZ'
+      leap.opts.safe_labels = ''
+      vim.keymap.set({ 'n', 'x', 'o' }, '<leader>;', '<Plug>(leap)', { desc = '[F]ind Leap' })
+      -- vim.keymap.set({ 'n', 'x', 'o' }, 's', '<Plug>(leap-forward)')
+      -- vim.keymap.set({ 'n', 'x', 'o' }, 'S', '<Plug>(leap-backward)')
+      -- vim.keymap.set({ 'n', 'x', 'o' }, 'gs', '<Plug>(leap-from-window)')
     end,
   },
   -- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
