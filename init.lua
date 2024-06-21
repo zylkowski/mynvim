@@ -1,88 +1,4 @@
---[[
-
-=====================================================================
-==================== READ THIS BEFORE CONTINUING ====================
-=====================================================================
-========                                    .-----.          ========
-========         .----------------------.   | === |          ========
-========         |.-""""""""""""""""""-.|   |-----|          ========
-========         ||                    ||   | === |          ========
-========         ||   KICKSTART.NVIM   ||   |-----|          ========
-========         ||                    ||   | === |          ========
-========         ||                    ||   |-----|          ========
-========         ||:Tutor              ||   |:::::|          ========
-========         |'-..................-'|   |____o|          ========
-========         `"")----------------(""`   ___________      ========
-========        /::::::::::|  |::::::::::\  \ no mouse \     ========
-========       /:::========|  |==hjkl==:::\  \ required \    ========
-========      '""""""""""""'  '""""""""""""'  '""""""""""'   ========
-========                                                     ========
-=====================================================================
-=====================================================================
-
-What is Kickstart?
-
-  Kickstart.nvim is *not* a distribution.
-
-  Kickstart.nvim is a starting point for your own configuration.
-    The goal is that you can read every line of code, top-to-bottom, understand
-    what your configuration is doing, and modify it to suit your needs.
-
-    Once you've done that, you can start exploring, configuring and tinkering to
-    make Neovim your own! That might mean leaving Kickstart just the way it is for a while
-    or immediately breaking it into modular pieces. It's up to you!
-
-    If you don't know anything about Lua, I recommend taking some time to read through
-    a guide. One possible example which will only take 10-15 minutes:
-      - https://learnxinyminutes.com/docs/lua/
-
-    After understanding a bit more about Lua, you can use `:help lua-guide` as a
-    reference for how Neovim integrates Lua.
-    - :help lua-guide
-    - (or HTML version): https://neovim.io/doc/user/lua-guide.html
-
-Kickstart Guide:
-
-  TODO: The very first thing you should do is to run the command `:Tutor` in Neovim.
-
-    If you don't know what this means, type the following:
-      - <escape key>
-      - :
-      - Tutor
-      - <enter key>
-
-    (If you already know the Neovim basics, you can skip this step.)
-
-  Once you've completed that, you can continue working through **AND READING** the rest
-  of the kickstart init.lua.
-
-  Next, run AND READ `:help`.
-    This will open up a help window with some basic information
-    about reading, navigating and searching the builtin help documentation.
-
-    This should be the first place you go to look when you're stuck or confused
-    with something. It's one of my favorite Neovim features.
-
-    MOST IMPORTANTLY, we provide a keymap "<space>sh" to [s]earch the [h]elp documentation,
-    which is very useful when you're not exactly sure of what you're looking for.
-
-  I have left several `:help X` comments throughout the init.lua
-    These are hints about where to find more information about the relevant settings,
-    plugins or Neovim features used in Kickstart.
-
-   NOTE: Look for lines like this
-
-    Throughout the file. These are for you, the reader, to help you understand what is happening.
-    Feel free to delete them once you know what you're doing, but they should serve as a guide
-    for when you are first encountering a few different constructs in your Neovim config.
-
-If you experience any errors while trying to install kickstart, run `:checkhealth` for more info.
-
-I hope you enjoy your Neovim journey,
-- TJ
-
-P.S. You can delete this when you're done too. It's your config now! :)
---]]
+-- MY FUCKING INIT ~Arek
 
 -- NOTE: :help localleader
 vim.g.mapleader = ' ' -- Set <space> as the leader key
@@ -94,7 +10,7 @@ vim.g.have_nerd_font = true -- Set to true if you have a Nerd Font installed
 -- Sync clipboard between OS and Neovim.
 -- Remove this option if you want your OS clipboard to remain independent.
 vim.opt.clipboard = 'unnamedplus' --  See `:help 'clipboard'`
-vim.opt.updatetime = 250 -- Decrease update time
+vim.opt.updatetime = 120 -- Decrease update time
 vim.opt.timeoutlen = 300 -- Decrease mapped sequence wait time : Displays which-key popup sooner
 vim.opt.number = true
 vim.opt.relativenumber = true
@@ -118,24 +34,24 @@ vim.opt.cursorline = true -- Show which line your cursor is on
 vim.opt.scrolloff = 16 -- Minimal number of screen lines to keep above and below the cursor.
 vim.opt.hlsearch = true -- Set highlight on search, but clear on pressing <Esc> in normal mode
 
+vim.opt.tabstop = 4
+vim.opt.shiftwidth = 4
+vim.opt.expandtab = true
+
 vim.diagnostic.config {
   virtual_text = {
-    virt_text_pos = 'right_align',
-    severity = {
-      vim.diagnostic.severity.ERROR,
-      vim.diagnostic.severity.WARN,
-      vim.diagnostic.severity.INFO,
-    },
+    virt_text_pos = 'right_align', -- Make error highlights right aligned
     underline = {
       severity = vim.diagnostic.severity.WARN,
     },
-    format = function(_diagnostic)
+    format = function()
       return ''
     end,
     signs = { text = { [vim.diagnostic.severity.ERROR] = '❌', [vim.diagnostic.severity.WARN] = '⚠: ' } },
   },
   float = { scope = 'l' },
-} -- Make error highlights right aligned
+  severity_sort = true,
+}
 
 --========================= KEYMAPS =======================
 --
@@ -143,6 +59,8 @@ vim.diagnostic.config {
 --
 --
 
+--========================= ESC BINDINGS ==================
+--=========================================================
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 vim.keymap.set('n', '<Esc><Esc>', function()
   local ntabs = #vim.api.nvim_list_tabpages()
@@ -159,30 +77,69 @@ end, {
   desc = 'Close current tab',
 })
 
+-- takes buffer number and removes the ESC ESC local keybinding
+--- @param buf integer
+local function cancel_esc_esc_once_buf(buf)
+  pcall(vim.keymap.del, 'n', '<Esc><Esc>', { buffer = buf })
+end
+
+-- any parent tab page, useful for handy closeing of plugins that
+-- spawn their own tabpages
+--- @param buf integer
+local function esc_esc_once_buf(buf)
+  vim.keymap.set('n', '<Esc><Esc>', function()
+    vim.cmd ':tabc'
+    cancel_esc_esc_once_buf(buf)
+  end, { buffer = buf })
+  -- NOTE: we also need to register an autocommand that will clear the above keymap
+  --       if the buffer is leaving the window it was in
+  --       :
+end
+
+-- returns true if buffer is trivial
+--- @param buf integer -- 0 is current buffer
+--- @return boolean
+local function buf_is_trivial(buf)
+  local n = vim.api.nvim_buf_line_count(buf)
+  if n == 0 then
+    return true
+  end
+  if n == 1 then
+    local c = #vim.api.nvim_buf_get_lines(buf, 0, 1, true)[1]
+    if c == 0 then
+      return true
+    end
+  end
+  return false
+end
+
+--========================= ESC BINDINGS ==================
+--=========================================================
+
 vim.keymap.set('v', '<leader>sc', '"hy:%s/<C-r>h//gc<left><left><left>', { desc = '[S]ubstitute [C]hange' })
 vim.keymap.set('v', '<leader>sa', '"hy:%s/<C-r>h/<C-r>h/gc<left><left><left>', { desc = '[S]ubstitute [A]ppend' })
 
-vim.keymap.set('n', '<leader>je', 'f=l', { desc = '[J]ump [E]quality' })
 vim.keymap.set('n', 'yp', 'yy<cr>kp<cr>k', { desc = '[Y]ank [P]aste - Duplicate Line' })
--- vim.keymap.set('n', 'le', 'o<Esc>', { desc = '[L]ine [E]mpty' })
 
-vim.keymap.set('n', 'p', 'p<leader>f') -- autoformat after paste/put
+-- vim.keymap.set('n', 'p', 'p<leader>f') -- autoformat after paste/put -- Does not work ;_;
 vim.keymap.set('n', '<C-w>n', ':tabnew<cr>', { desc = '[N]ew window' })
 
 vim.keymap.set({ 'v', 'n' }, '<M-h>', ':tabprevious<cr>')
 vim.keymap.set({ 'v', 'n' }, '<M-l>', ':tabNext<cr>')
--- vim.keymap.set('n', '<X1Mouse>', '<C-o>') -- Use mouse button to go out. Really useful when quickly traversing unknown code. Doesn't work for some reason :shrug:
+
 -- vim.keymap.set('n', '<M-j>', '12j')
 -- vim.keymap.set('n', '<M-k>', '12k')
 do
   local dt = 10
-  local n = 10
+  local n = 20
 
   --- @param dir 'j' | 'k'
   local function jump(dir)
     return function()
       local d = vim.api.nvim_get_mode()
-      for i = 0, n do
+      local wh = vim.api.nvim_win_get_height(vim.api.nvim_get_current_win())
+      local dn = n * wh / (2 * 68)
+      for i = 0, dn do
         vim.fn.timer_start(i * dt, function()
           vim.api.nvim_feedkeys(dir, d.mode, false)
         end)
@@ -201,7 +158,24 @@ end
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous [D]iagnostic message' })
 vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = 'Go to next [D]iagnostic message' })
 vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Show diagnostic [E]rror messages' })
-vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
+
+vim.keymap.set('n', '<leader>qq', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
+vim.keymap.set('n', ']q', ':cn<cr>', { desc = 'Go to next [Q]uickfix list' })
+vim.keymap.set('n', '[q', ':cp<cr>', { desc = 'Go to next [Q]uickfix list' })
+vim.keymap.set('n', '<leader>qc', ':ccl<cr>', { desc = '[Q]uickfix [C]lose' })
+vim.keymap.set('n', '<leader>qf', function()
+  local curr_qf_list = vim.fn.getqflist()
+
+  -- try reading :help getqflist-examples
+  local items = vim.fn.getqflist { id = 0, items = 0 }
+  print(vim.inspect(items))
+  -- for i in items do
+  --   print(i)
+  -- end
+  -- for i = 0, len(curr_qf_list) do
+  --   print(curr_qf_list[i].user_data)
+  -- end
+end)
 
 vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
 
@@ -223,6 +197,20 @@ end
 vim.keymap.set('n', '<leader>I', function()
   vim.show_pos()
 end)
+
+-- Nice to start off where you left off
+vim.api.nvim_create_autocmd('BufWinEnter', {
+  desc = 'Start off where you left off',
+  group = vim.api.nvim_create_augroup('kickstart-buf-enter', { clear = true }),
+  -- NOTE: this is just the command '"  in lua [[ and ]] are similar to ``` in other languages
+  callback = function()
+    local ok, pos = pcall(vim.api.nvim_buf_get_mark, 0, [["]])
+    if ok and pos[1] > 0 then
+      -- protected mode because sometimes this will fail, for example on NON FILE BUFFERS
+      pcall(vim.api.nvim_win_set_cursor, 0, pos)
+    end
+  end,
+})
 
 -- [[ Basic Autocommands ]]
 --  See `:help lua-guide-autocommands`
@@ -265,7 +253,7 @@ require('lazy').setup({
   {
     'mbbill/undotree', -- Nice file change history
     config = function()
-      vim.keymap.set('n', '<leader>u', ':UndotreeToggle<CR>', { desc = 'Toggle [U]ndotree' })
+      vim.keymap.set('n', '<leader>u', ':UndotreeToggle<CR>:UndotreeFocus<CR>', { desc = 'Toggle [U]ndotree' })
     end,
   },
 
@@ -383,12 +371,14 @@ require('lazy').setup({
         -- You can put your default mappings / updates / etc. in here
         --  All the info you're looking for is in `:help telescope.setup()`
         --
-        -- defaults = {
-        --   mappings = {
-        --     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
-        --   },
-        -- },
-        -- pickers = {}
+        defaults = {
+          mappings = {
+            i = { ['<c-enter>'] = 'to_fuzzy_refine' },
+            i = { ['<Esc><Esc>'] = require('telescope.actions').close },
+            n = { ['<Esc><Esc>'] = require('telescope.actions').close },
+          },
+        },
+        pickers = {},
         extensions = {
           ['ui-select'] = {
             require('telescope.themes').get_dropdown(),
@@ -447,7 +437,27 @@ require('lazy').setup({
       'sindrets/diffview.nvim',
     },
     config = function()
-      vim.keymap.set('n', '<leader>gl', ':Flog -all -date=relative<cr>', { desc = '[G]it [L]og' })
+      -- vim.keymap.set('n', '<leader>gl', ':Flog -all -date=relative<cr>', { desc = '[G]it [L]og' })
+      vim.keymap.set('n', '<leader>gl', function()
+        -- whenever we enter a flog buffer we want to register
+        -- this autocommand ONCE, it in turn registers the esc esc
+        -- key binding on the buffer in it such that it's easy to
+        -- leave flog
+        vim.api.nvim_create_autocmd({ 'BufEnter' }, {
+          callback = function(ctx)
+            -- this helps us catch any bugs, if we see this in the fidget history
+            -- then we know that we did not deregister the autocommand correctly, the use of once should make this automatic
+            require('fidget').notify('flog - buf enter', '@comment.error', { annote = 'FLOG' })
+            esc_esc_once_buf(ctx.buf)
+          end,
+          once = true,
+        })
+        vim.cmd [[:Flog -all -max-count=999999 -date=relative]]
+        vim.schedule(function()
+          vim.fn.search 'HEAD ->'
+        end)
+        vim.api.nvim_feedkeys('zz', 'n', false)
+      end, { desc = '[G]it [L]og' })
       -- vim.keymap.set('n', '<leader>gl', ':Flog -format=%ar%x20[%h]%x20%d%x20%an <cr>', { desc = '[G]it [L]og' })
       vim.keymap.set('n', '<leader>gs', ':Git<cr>', { desc = '[G]it [S]tatus' })
 
@@ -545,22 +555,90 @@ require('lazy').setup({
       'nvim-web-devicons',
     },
     opts = {
-      enhanced_diff_hl = true,
+      -- enhanced_diff_hl = true,
+      hooks = {
+        view_leave = function()
+          local buf = vim.api.nvim_get_current_buf()
+          -- print('leaving view: buf =', buf)
+          cancel_esc_esc_once_buf(buf)
+        end,
+        view_enter = function()
+          local buf = vim.api.nvim_get_current_buf()
+          -- print('entering view: buf =', buf)
+          esc_esc_once_buf(buf)
+        end,
+        diff_buf_read = function(buf)
+          -- print('diffview read buf: ', buf)
+          vim.opt_local.cursorline = false
+          esc_esc_once_buf(buf)
+        end,
+        view_opened = function()
+          -- print 'opening view'
+          vim.fn.timer_start(100, function()
+            local tp = vim.api.nvim_get_current_tabpage()
+            local wins = vim.api.nvim_tabpage_list_wins(tp)
+            local win = wins[3]
+
+            local buf = vim.api.nvim_win_get_buf(wins[3])
+            if buf_is_trivial(buf) then
+              print 'no change'
+              vim.cmd [[:DiffviewClose]]
+              return
+            end
+
+            if win then
+              vim.api.nvim_set_current_win(win)
+              vim.api.nvim_win_set_cursor(0, { 1, 0 })
+            end
+          end)
+        end,
+      },
     },
     init = function()
-      -- <leader>gd should toggle diffview
-      vim.keymap.set('n', '<leader>gd', function()
-        -- first need to focus files panel so we can read expected diffview name of buffer
-        vim.cmd 'DiffviewFocusFiles'
-        local current_buffer = vim.api.nvim_get_current_buf()
-        local current_buffer_name = vim.api.nvim_buf_get_name(current_buffer)
-        local diffviewOpen = string.match(current_buffer_name, '^diffview.*')
-        if diffviewOpen then
-          vim.cmd 'DiffviewClose'
-        else
-          vim.cmd 'DiffviewOpen'
-        end
-      end, { desc = '[G]it [D]iff' })
+      vim.keymap.set(
+        'n',
+        '<leader>gd',
+        --[[
+             1. open diffview
+             2. turn off any highlighted search matches
+             3. jump two windows (should end us up at current buffer)
+             4. go to last location in buffer ... not we have to do this
+                after a delay ... 100 ms seems to be sufficient, increase
+                if you don't get deisred result
+        --]]
+        --
+        function()
+          -- first we get current cursor location in the file we're in
+          local pos = vim.api.nvim_win_get_cursor(0)
+
+          vim.cmd [[:DiffviewOpen]]
+          vim.fn.timer_start(
+            100, -- delay ms ... increase this if you dont see desired result
+            function()
+              -- this delayed callback is optional
+              -- it effectively goes to where you were in the file
+              -- NOTE at this point in "time" our current window
+              --      is the the active window in the diffview, diffview hooks may impact which window this is
+
+              if buf_is_trivial(0) then
+                print 'no changes'
+                -- vim.cmd [[:DiffviewClose]]
+                return
+              end
+
+              local n = vim.api.nvim_buf_line_count(0)
+
+              if pos[1] <= n then
+                vim.api.nvim_win_set_cursor(0, pos) -- note that 0 -> current window which is now the diff window after 100 ms
+                vim.api.nvim_feedkeys('zz', 'n', false)
+              end
+            end
+          )
+        end,
+        {
+          desc = '[G]it [D]iff',
+        }
+      )
     end,
   },
 
@@ -647,13 +725,54 @@ require('lazy').setup({
           --  Similar to document symbols, except searches over your entire project.
           map('<leader>ws', require('telescope.builtin').lsp_dynamic_workspace_symbols, '[W]orkspace [S]ymbols')
 
-          -- Rename the variable under your cursor.
-          --  Most Language Servers support renaming across files, etc.
-          map('<leader>rn', vim.lsp.buf.rename, '[R]e[n]ame')
+          -- -- Rename the variable under your cursor.
+          -- --  Most Language Servers support renaming across files, etc.
+          -- map('<leader>rn', vim.lsp.buf.rename, '[R]e[n]ame')
+
+          map('<leader>rn', function()
+            local res = vim.lsp.buf_request_sync(0, 'textDocument/hover', vim.lsp.util.make_position_params(), 200)[1]
+            if res and not res.error then
+              --- @class I.Loc
+              --- @field character integer
+              --- @field line integer
+              local file_buf = vim.api.nvim_get_current_buf()
+              local s = res.result.range['start'] --- @type I.Loc
+              local e = res.result.range['end'] --- @type I.Loc
+              local old_name = vim.api.nvim_buf_get_text(0, s.line, s.character, e.line, e.character, {})[1]
+              local row = vim.fn.winline()
+              local col = vim.fn.wincol()
+              local buf = vim.api.nvim_create_buf(false, true)
+              local win = vim.api.nvim_open_win(buf, false, {
+                relative = 'win',
+                row = row,
+                col = col,
+                width = 25,
+                height = 1,
+                border = 'rounded',
+                style = 'minimal',
+              })
+              vim.api.nvim_set_current_win(win)
+              vim.api.nvim_buf_set_lines(0, 0, 2, false, { old_name })
+              vim.keymap.set({ 'n' }, '<Esc><Esc>', ':q<cr>', { buffer = buf })
+              vim.keymap.set({ 'n', 'i' }, '<cr>', function()
+                local new_name = vim.api.nvim_buf_get_text(0, 0, 0, 0, 256, {})[1]
+                vim.api.nvim_win_close(win, true)
+                if new_name == old_name then
+                  print 'no change'
+                  return
+                end
+                vim.lsp.buf.rename(new_name, { bufnr = file_buf })
+                vim.schedule(function()
+                  vim.cmd 'stopinsert'
+                end)
+              end, { buffer = buf })
+            end
+          end, '[R]e[n]ame')
 
           -- Execute a code action, usually your cursor needs to be on top of an error
           -- or a suggestion from your LSP for this to activate.
           map('<leader>ca', vim.lsp.buf.code_action, '[C]ode [A]ction')
+          vim.keymap.set('i', '<C-x>', vim.lsp.buf.code_action, { buffer = event.buf, desc = 'LSP: Code Action' })
 
           -- Opens a popup that displays documentation about the word under your cursor
           --  See `:help K` for why this keymap.
@@ -690,6 +809,14 @@ require('lazy').setup({
                 vim.api.nvim_clear_autocmds { group = 'kickstart-lsp-highlight', buffer = event2.buf }
               end,
             })
+          end
+
+          -- wraps normal diagnostics callback so we can get some extra information
+          -- useful to tell whether or not we are still loading workspace
+          vim.lsp.handlers['textDocument/publishDiagnostics'] = function(err, res, ctx)
+            local uri = res.uri
+            require('fidget').notify('-> ', '@comment.error', { key = 'diagnostic', annote = uri })
+            vim.lsp.diagnostic.on_publish_diagnostics(err, res, ctx)
           end
 
           -- Lets give the hover information stuff a bit more style
@@ -916,11 +1043,16 @@ require('lazy').setup({
           --  completions whenever it has completion options available.
           ['<C-Space>'] = cmp.mapping.complete {},
 
+          -- unmap down,up and cr key, I still want to be able to move around text even if autocompletion is brought up
           ['<Down>'] = cmp.mapping(function(fallback)
             cmp.close()
             fallback()
           end, { 'i' }),
           ['<Up>'] = cmp.mapping(function(fallback)
+            cmp.close()
+            fallback()
+          end, { 'i' }),
+          ['<CR>'] = cmp.mapping(function(fallback)
             cmp.close()
             fallback()
           end, { 'i' }),
@@ -954,7 +1086,6 @@ require('lazy').setup({
       }
     end,
   },
-
   { -- My theme
     'rose-pine/neovim',
     priority = 1000, -- Make sure to load this before all the other start plugins.
@@ -987,20 +1118,107 @@ require('lazy').setup({
       -- - sr)'  - [S]urround [R]eplace [)] [']
       require('mini.surround').setup()
 
-      -- Simple and easy statusline.
-      --  You could remove this setup call if you don't like it,
-      --  and try some other statusline plugin
-      local statusline = require 'mini.statusline'
-      -- set use_icons to true if you have a Nerd Font
-      statusline.setup { use_icons = vim.g.have_nerd_font }
+      -- -- Simple and easy statusline.
+      -- --  You could remove this setup call if you don't like it,
+      -- --  and try some other statusline plugin
+      -- local statusline = require 'mini.statusline'
+      -- -- set use_icons to true if you have a Nerd Font
+      -- statusline.setup { use_icons = vim.g.have_nerd_font }
 
-      -- You can configure sections in the statusline by overriding their
-      -- default behavior. For example, here we set the section for
-      -- cursor location to LINE:COLUMN
-      ---@diagnostic disable-next-line: duplicate-set-field
-      statusline.section_location = function()
-        return '%2l:%-2v'
+      do -- Simple and easy statusline.
+        local statusline = require 'mini.statusline'
+
+        -- set use_icons to true if you have a Nerd Font
+        statusline.setup {
+          use_icons = vim.g.have_nerd_font,
+          content = {
+            active = function()
+              local mode, mode_hl = MiniStatusline.section_mode { trunc_width = 120 }
+              local git = MiniStatusline.section_git { trunc_width = 40 }
+              local diff = MiniStatusline.section_diff { icon = 'Δ', trunc_width = 75 }
+              local diagnostics = MiniStatusline.section_diagnostics { trunc_width = 75 }
+              local lsp = MiniStatusline.section_lsp { trunc_width = 75 }
+
+              -- local filename = MiniStatusline.section_filename { trunc_width = 140 }
+              local filename = vim.fn.expand '%f'
+              local filenam_hl = 'MiniStatuslineFilename'
+              do
+                if #filename > 24 then
+                  local ff = vim.fn.split(filename, '/')
+                  if #ff > 3 then
+                    filename = ff[1] .. '/.../' .. ff[#ff - 1] .. '/' .. ff[#ff]
+                  end
+                end
+
+                local unsaved = vim.api.nvim_get_option_value('modified', { buf = 0 })
+                if unsaved then
+                  filenam_hl = 'MiniStatuslineFilenameUnsaved'
+                  filename = filename .. ' *'
+                end
+              end
+
+              -- do we have any unsaved buffers?
+              local bufs = vim.api.nvim_list_bufs()
+              local workspace_hl = 'MiniStatuslineWorkspace'
+              for _, buf in pairs(bufs) do
+                local unsaved = vim.api.nvim_get_option_value('modified', { buf = buf })
+                if unsaved then
+                  workspace_hl = 'MiniStatuslineWorkspaceUnsaved'
+                  break
+                end
+              end
+
+              local fileinfo = MiniStatusline.section_fileinfo { trunc_width = 120 }
+              local location = MiniStatusline.section_location { trunc_width = 75 }
+              local search = MiniStatusline.section_searchcount { trunc_width = 75 }
+
+              -- get root_dir of the lsp client attached to this buffer
+              local bufnr = vim.api.nvim_get_current_buf()
+              local clients = vim.lsp.get_clients()
+              local client = nil
+              local root_dir = nil
+              for _, c in pairs(clients) do
+                if c.attached_buffers[bufnr] ~= nil then
+                  client = c
+                  root_dir = client.root_dir
+                  break
+                end
+              end
+
+              return MiniStatusline.combine_groups {
+                { hl = mode_hl, strings = { mode } },
+                { hl = 'MiniStatuslineBranch', strings = { git } },
+                { hl = workspace_hl, strings = { vim.fs.basename(root_dir) } },
+                { hl = 'MiniStatuslineChanges', strings = { diff } },
+                { hl = 'MiniStatuslineDiagnostics', strings = { diagnostics, lsp } },
+                '%<', -- Mark general truncate point
+                { hl = filenam_hl, strings = { filename } },
+                '%=', -- End left alignment
+                { hl = 'MiniStatuslineFileinfo', strings = { fileinfo } },
+                { hl = mode_hl, strings = { search, location } },
+              }
+            end,
+          },
+        }
+
+        -- You can configure sections in the statusline by overriding their
+        -- default behavior. For example, here we set the section for
+        -- cursor location to LINE:COLUMN
+        ---@diagnostic disable-next-line: duplicate-set-field
+        statusline.section_location = function()
+          return '%2l:%-2v'
+        end
+
+        -- statusline.section_diff(args)
       end
+
+      -- -- You can configure sections in the statusline by overriding their
+      -- -- default behavior. For example, here we set the section for
+      -- -- cursor location to LINE:COLUMN
+      -- ---@diagnostic disable-next-line: duplicate-set-field
+      -- statusline.section_location = function()
+      --   return '%2l:%-2v'
+      -- end
 
       -- ... and there is more!
       --  Check out: https://github.com/echasnovski/mini.nvim
