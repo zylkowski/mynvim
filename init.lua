@@ -47,11 +47,40 @@ vim.diagnostic.config {
     format = function()
       return ''
     end,
-    signs = { text = { [vim.diagnostic.severity.ERROR] = '❌', [vim.diagnostic.severity.WARN] = '⚠: ' } },
+    -- signs = { text = { [vim.diagnostic.severity.ERROR] = '❌', [vim.diagnostic.severity.WARN] = '⚠: ' } },
   },
   float = { scope = 'l' },
   severity_sort = true,
 }
+
+vim.api.nvim_create_user_command('CheckReds', function()
+  local height = vim.api.nvim_win_get_height(0)
+  local num_shades = math.max(height - 4, 4)
+  local colors = {}
+  for idx = 0, num_shades do
+    local val = string.format('%02x', (idx * 255) / num_shades)
+    colors[#colors + 1] = '#' .. val .. '0000'
+  end
+  local buf = vim.api.nvim_create_buf(false, true)
+  local win = vim.api.nvim_open_win(buf, false, {
+    relative = 'win',
+    row = 1,
+    col = 3,
+    width = 7,
+    height = #colors,
+    border = 'rounded',
+    style = 'minimal',
+  })
+
+  vim.api.nvim_set_current_win(win)
+  vim.api.nvim_buf_set_lines(0, 0, 2, false, colors)
+  for idx, c in ipairs(colors) do
+    local rgb = string.sub(c, 2)
+    local hl_name = 'ColorCheck-' .. rgb
+    vim.api.nvim_set_hl(0, hl_name, { bg = c, fg = '#000000' })
+    vim.api.nvim_buf_add_highlight(0, 0, hl_name, idx - 1, 0, -1)
+  end
+end, { desc = 'Test your colors' })
 
 --========================= KEYMAPS =======================
 --
@@ -61,7 +90,7 @@ vim.diagnostic.config {
 
 --========================= ESC BINDINGS ==================
 --=========================================================
-vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
+vim.keymap.set('n', '<Esc>', ':nohlsearch<CR>', { silent = true })
 vim.keymap.set('n', '<Esc><Esc>', function()
   local ntabs = #vim.api.nvim_list_tabpages()
   if ntabs <= 1 then
@@ -196,7 +225,7 @@ end
 -- useful for figuring out what higlight groups are relevant for stuff under cursor
 vim.keymap.set('n', '<leader>I', function()
   vim.show_pos()
-end)
+end, { desc = '[I]nspect' })
 
 -- Nice to start off where you left off
 vim.api.nvim_create_autocmd('BufWinEnter', {
@@ -214,6 +243,30 @@ vim.api.nvim_create_autocmd('BufWinEnter', {
 
 -- [[ Basic Autocommands ]]
 --  See `:help lua-guide-autocommands`
+
+-- Leaving Insert mode after 15 seconds inactivity
+vim.api.nvim_create_autocmd('CursorHoldI', {
+  desc = 'Escape insert mode after inactivity',
+  group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = true }),
+  callback = function()
+    vim.cmd ':stopinsert'
+  end,
+})
+vim.api.nvim_create_autocmd('InsertEnter', {
+  desc = 'Escape insert mode after inactivity',
+  group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = false }),
+  callback = function()
+    vim.g.updaterestore = vim.opt.updatetime:get()
+    vim.opt.updatetime = 15000
+  end,
+})
+vim.api.nvim_create_autocmd('InsertLeave', {
+  desc = 'Escape insert mode after inactivity',
+  group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = false }),
+  callback = function()
+    vim.opt.updatetime = vim.g.updaterestore
+  end,
+})
 
 -- Highlight when yanking (copying) text
 --  Try it with `yap` in normal mode
@@ -234,6 +287,70 @@ if not vim.loop.fs_stat(lazypath) then
   vim.fn.system { 'git', 'clone', '--filter=blob:none', '--branch=stable', lazyrepo, lazypath }
 end ---@diagnostic disable-next-line: undefined-field
 vim.opt.rtp:prepend(lazypath)
+
+-- =================================== HEX COLORS =============================
+
+local hlgs = {}
+
+local my_ns = vim.api.nvim_create_namespace 'arek_hl'
+--- works by searching for string of the form "#rrggbb"
+--- keeps a list of created highlght groups and reuses
+--- them, ... only searches in the current visible part
+--- of the buffer, and only upates on changes
+local function hex_color_highlight()
+  local top = vim.fn.line 'w0'
+  local bot = vim.fn.line 'w$'
+
+  --- @type table<string, string>
+  ---
+  ---
+  -- local hlgs = vim.g.hex_highlight_groups
+  if not hlgs then
+    hlgs = {}
+  end
+
+  local text = vim.api.nvim_buf_get_lines(0, top, bot, true)
+
+  vim.api.nvim_buf_clear_namespace(0, my_ns, 0, -1)
+  vim.api.nvim_win_set_hl_ns(0, my_ns)
+
+  for idx, line in pairs(text) do
+    local offset = 1
+    for m in line:gmatch '["\']#%x%x%x%x%x%x["\']' do
+      local loc = line:find(m, offset, true)
+      offset = loc + 9
+      local row = idx + top
+      local col_start = loc
+      local col_end = offset
+
+      local hlg = false
+      local sm = m:sub(3, 8)
+      for _, c_hlg in pairs(hlgs) do
+        if c_hlg == sm then
+          hlg = true
+          break
+        end
+      end
+
+      if not hlg then
+        vim.api.nvim_set_hl(my_ns, sm, { fg = '#' .. sm })
+        hlgs[#hlgs + 1] = sm
+      end
+
+      if col_start and col_end then
+        vim.api.nvim_buf_add_highlight(0, my_ns, sm, row - 1, col_start - 1, col_end - 1)
+      end
+    end
+  end
+end
+
+-- todo: should add textchanged
+-- "#aaaaaa" "#ffaabb"
+vim.api.nvim_create_autocmd({ 'winenter', 'winscrolled' }, {
+  callback = function()
+    hex_color_highlight()
+  end,
+})
 
 -- [[ Configure and install plugins ]]
 --
@@ -293,7 +410,12 @@ require('lazy').setup({
     'folke/which-key.nvim',
     event = 'VimEnter', -- Sets the loading event to 'VimEnter'
     config = function() -- This is the function that runs, AFTER loading
-      require('which-key').setup()
+      require('which-key').setup {
+
+        window = {
+          border = 'rounded', -- none, single, double, shadow
+        },
+      }
 
       -- Document existing key chains
       require('which-key').register {
@@ -790,17 +912,17 @@ require('lazy').setup({
           local client = vim.lsp.get_client_by_id(event.data.client_id)
           if client and client.server_capabilities.documentHighlightProvider then
             local highlight_augroup = vim.api.nvim_create_augroup('kickstart-lsp-highlight', { clear = false })
-            vim.api.nvim_create_autocmd({ 'CursorHold', 'CursorHoldI' }, {
-              buffer = event.buf,
-              group = highlight_augroup,
-              callback = vim.lsp.buf.document_highlight,
-            })
-
-            vim.api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI' }, {
-              buffer = event.buf,
-              group = highlight_augroup,
-              callback = vim.lsp.buf.clear_references,
-            })
+            -- vim.api.nvim_create_autocmd({ 'CursorHold', 'CursorHoldI' }, {
+            --   buffer = event.buf,
+            --   group = highlight_augroup,
+            --   callback = vim.lsp.buf.document_highlight,
+            -- })
+            --
+            -- vim.api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI' }, {
+            --   buffer = event.buf,
+            --   group = highlight_augroup,
+            --   callback = vim.lsp.buf.clear_references,
+            -- })
 
             vim.api.nvim_create_autocmd('LspDetach', {
               group = vim.api.nvim_create_augroup('kickstart-lsp-detach', { clear = true }),
@@ -925,6 +1047,18 @@ require('lazy').setup({
       }
     end,
   },
+  -- {
+  --   'mrcjkb/rustaceanvim',
+  --   version = '^4', -- Recommended
+  --   lazy = false, -- This plugin is already lazy
+  --   init = function()
+  --     local bufnr = vim.api.nvim_get_current_buf()
+  --     vim.keymap.set('n', '<leader>a', function()
+  --       vim.cmd.RustLsp 'codeAction' -- supports rust-analyzer's grouping
+  --       -- or vim.lsp.buf.codeAction() if you don't want grouping.
+  --     end, { silent = true, buffer = bufnr, desc = 'Rust Code Action' })
+  --   end,
+  -- },
 
   { -- Autoformat
     'stevearc/conform.nvim',
@@ -1086,15 +1220,27 @@ require('lazy').setup({
       }
     end,
   },
-  { -- My theme
-    'rose-pine/neovim',
-    priority = 1000, -- Make sure to load this before all the other start plugins.
-    init = function()
-      require('rose-pine').setup { styles = { italic = false } } -- This has to be before `vim.cmd.colorscheme` in order to work properly
-      -- Load the colorscheme here.
-      vim.cmd.colorscheme 'rose-pine'
-    end,
-  },
+  -- { -- My theme
+  --   'rose-pine/neovim',
+  --   priority = 1000, -- Make sure to load this before all the other start plugins.
+  --   init = function()
+  --     require('rose-pine').setup { styles = { italic = false } } -- This has to be before `vim.cmd.colorscheme` in order to work properly
+  --     -- Load the colorscheme here.
+  --     vim.cmd.colorscheme 'rose-pine'
+  --   end,
+  -- },
+  -- {
+  --   'sho-87/kanagawa-paper.nvim',
+  --   priority = 1000,
+  --   init = function()
+  --     require('kanagawa-paper').setup {
+  --       commentStyle = {
+  --
+  --       },
+  --     }
+  --     vim.cmd.colorscheme 'kanagawa-paper'
+  --   end,
+  -- },
 
   -- Highlight todo, notes, etc in comments
   { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
@@ -1102,6 +1248,228 @@ require('lazy').setup({
   { -- Collection of various small independent plugins/modules
     'echasnovski/mini.nvim',
     config = function()
+      do
+        -- everything related to color theme goes here inside this block
+        require('mini.colors').setup {}
+
+        ---@type Colorscheme
+        local theme = MiniColors.get_colorscheme 'retrobox'
+        ---@type table<string, vim.api.keyset.highlight>
+        local hl = theme.groups
+
+        -- sets several highlight, if any already existed it gets overwritten entirely
+        ---@param names string | table<string>
+        ---@param data vim.api.keyset.highlight
+        local function set_hl(names, data)
+          if type(names) == 'string' then
+            set_hl({ names }, data)
+            return
+          end
+          for _, name in pairs(names) do
+            hl[name] = data
+          end
+        end
+
+        -- tweaks an existing highlight, only adds or merges does not overwrite
+        ---@param names string | table<string>
+        ---@param data vim.api.keyset.highlight
+        local function tweak_hl(names, data)
+          if type(names) == 'string' then
+            tweak_hl({ names }, data)
+            return
+          end
+          for _, name in pairs(names) do
+            hl[name] = hl[name] or {}
+            hl[name] = vim.tbl_extend('force', hl[name], data)
+          end
+        end
+
+        ---@type table<string, string>
+        local c = {
+          brown = '#644A40',
+          orange = '#ad6639',
+          sand = '#C39D5E',
+          white = '#b8a586',
+          white_disabled = '#847762',
+          teal = '#83A598',
+          blue3 = '#6d86b2',
+          pink = '#bf6079',
+          pinkish = '#df8099',
+          pink2 = '#E7545E',
+          pear = '#8EC07C', -- '#638657', '#637f59' '#4e7440'
+          pear2 = '#637f59',
+
+          pear3 = '#a8bda0',
+          pear4 = '#95ad8c',
+          gray = '#404040',
+          light_gray = '#505050',
+        }
+
+        -- '#ad5353' '#ad7653' '#ad9b53' '#92ad53' '#62ad53' '#53ad6d' '#53ad97' '#53a4ad' '#5373ad' '#7d53ad' '#a353ad'
+        --
+        -- '#005bff' -> '#004fdd' '#004dd7' '#346bce' '#1e6eff' '#2674ff' '#74a5ff' -- dune blue eyes
+        --
+        -- '#00e8ff' -> '#37c5d3' '#008f9d' '#00646e' '#2e909a' '#3aa6b0'
+        --
+        -- '#00ffbb' ->
+        --
+        -- '#ff6400' -> '#a8714d' '#d5651c' '#3d2c21' '#3a1700' '#653e25' '#714a31'    -- dune orange
+        --
+        -- '#ff9f00' ->
+        --
+        -- '#ff1b00' -> '#e26d63'
+        --
+        -- '#C39D5E' '#ad5353' '#845A40' '#ad6639' '#ad7653' '#d79921' '#ad9b53' '#92ad53' '#62ad53' '#53ad6d' '#458588' '#53ad97' '#53a4ad' '#5373ad' '#7d53ad' '#a353ad'
+        --
+        --                               '#914c20'
+        -- let g:terminal_ansi_colors = ['#1c1c1c', '#cc241d', '#98971a', '#d79921', '#458588', '#b16286', '#689d6a',
+        --- '#b53a35' '#ad3e46' '#ad3e7a'
+
+        -- '#487EB5' '#B8BB26' '#D3869B''#E7545E'  '#b8a586'
+
+        tweak_hl('Search', { fg = c.teal })
+        set_hl('Visual', { bg = c.light_gray })
+        tweak_hl('IncSearch', { fg = c.sand })
+        tweak_hl('DiagnosticUnderlineError', { undercurl = true })
+        set_hl('DiagnosticUnnecessary', { fg = c.white_disabled })
+
+        set_hl('NormalFloat', { bg = nil })
+
+        set_hl('Normal', { fg = c.white, bg = '#181818' })
+        set_hl('SignColumn', hl.Normal)
+
+        set_hl({
+          'Directory',
+          'Statement',
+          'Function',
+          'Macro',
+          '@tag',
+          '@function.builtin',
+          '@tag.builtin',
+          '@lsp.type.formatSpecifier',
+        }, { fg = c.teal })
+
+        set_hl({
+          'Delimiter',
+          'Keyword',
+          'Repeat',
+          'Conditional',
+          'Operator',
+          'WinSeparator',
+          '@tag.delimiter',
+          '@constructor.lua',
+        }, { fg = c.brown })
+
+        set_hl({
+          'Type',
+          'Number',
+          'Boolean',
+          'String',
+          'Structure',
+          'GitSignsChange',
+          'CursorLineNr',
+          '@constructor',
+          '@type.builtin',
+        }, { fg = c.sand })
+
+        set_hl({
+          'Identifier',
+          '@markup.raw',
+          '@tag.attribute',
+          'markdownBlockQuote',
+        }, { fg = c.white })
+
+        set_hl({
+          'Include',
+          'Label',
+          'Title',
+          'GitSignsAdd',
+          'LeapLabelPrimary',
+          '@lsp.type.namespace',
+          '@module',
+        }, { fg = c.pear })
+
+        -- TODO: example todo
+        -- NOTE: example note
+        -- FIXME: example fixme
+        set_hl({
+          'TodoBgTODO',
+          'TodoBgNOTE',
+        }, { fg = c.gray, bg = c.pear })
+
+        set_hl({
+          'TodoFgFIX',
+        }, { fg = c.pink2 })
+
+        set_hl({
+          'Constant',
+          'SpecialChar',
+          'GitSignsDelete',
+          '@constant.builtin',
+          '@lsp.type.lifetime',
+          '@lsp.typemod.keyword.async',
+        }, { fg = c.pink })
+
+        set_hl({
+          'Comment',
+          'LeapBackdrop',
+        }, { fg = c.gray })
+
+        set_hl({
+          'TodoBgFIX',
+          'TodoBgFIXME',
+        }, { fg = c.gray, bg = c.pink2 })
+
+        set_hl('Special', { fg = c.orange })
+
+        set_hl('flogBranch0', { fg = '#458588' })
+        set_hl('flogBranch1', { fg = '#458588' })
+        set_hl('flogBranch2', { fg = '#689d6a' })
+        set_hl('flogBranch3', { fg = '#b16286' })
+        set_hl('flogBranch4', { fg = '#d79921' })
+        set_hl('flogBranch5', { fg = '#98971a' })
+        set_hl('flogBranch6', { fg = '#E7545E' })
+        set_hl('flogBranch7', { fg = '#ad6639' })
+        set_hl('flogBranch8', { fg = '#b53a35' })
+        set_hl('flogBranch9', { fg = '#d5651c' })
+
+        set_hl({
+          'DiffAdd',
+          'DiffChange',
+        }, { bg = '#003530' })
+
+        set_hl('DiffText', { bg = '#004040' })
+        set_hl('DiffDelete', { fg = '#F00000' })
+        set_hl('DiffviewDiffDeleteDim', { fg = '#F00000' })
+
+        set_hl({
+          'MiniStatuslineBranch',
+          'MiniStatuslineWorkspace',
+          'MiniStatuslineWorkspaceUnsaved',
+          'MiniStatuslineChanges',
+          'MiniStatuslineDiagnostics',
+          'MiniStatuslineFileinfo',
+        }, { bg = hl.StatusLineNC.fg })
+
+        tweak_hl('MiniStatuslineBranch', { fg = c.pear })
+        tweak_hl('MiniStatuslineWorkspaceUnsaved', { fg = c.pink2 })
+        tweak_hl('MiniStatuslineChanges', { fg = c.sand })
+        tweak_hl('MiniStatuslineDiagnostics', { fg = c.teal })
+        tweak_hl('MiniStatuslineFileinfo', { fg = c.teal })
+
+        set_hl({
+          'MiniStatuslineModeNormal',
+          'MiniStatuslineModeVisual',
+          'MiniStatuslineModeInsert',
+        }, { fg = hl.StatusLineNC.fg })
+
+        tweak_hl('MiniStatuslineModeNormal', { bg = c.sand })
+        tweak_hl('MiniStatuslineModeVisual', { bg = c.pink })
+        tweak_hl('MiniStatuslineModeInsert', { bg = c.teal })
+
+        ---@diagnostic disable-next-line: undefined-field
+        theme:apply()
+      end
       -- Better Around/Inside textobjects
       --
       -- Examples:
@@ -1293,9 +1661,25 @@ require('lazy').setup({
       leap.opts.labels = 'sfnjklhodweimbuyvrgtaqpcxzSFNJKLHODWEIMBUYVRGTAQPCXZ'
       leap.opts.safe_labels = ''
       vim.keymap.set({ 'n', 'x', 'o' }, '<leader>;', '<Plug>(leap)', { desc = '[F]ind Leap' })
-      -- vim.keymap.set({ 'n', 'x', 'o' }, 's', '<Plug>(leap-forward)')
-      -- vim.keymap.set({ 'n', 'x', 'o' }, 'S', '<Plug>(leap-backward)')
-      -- vim.keymap.set({ 'n', 'x', 'o' }, 'gs', '<Plug>(leap-from-window)')
+    end,
+  },
+  {
+    'OXY2DEV/markview.nvim',
+    opts = {},
+  },
+  {
+    'rmagatti/auto-session', -- auto save session
+    config = function()
+      require('auto-session').setup {
+        log_level = 'error',
+        auto_session_suppress_dirs = {
+          '~/',
+          '~/Downloads',
+          '~/Documents',
+        },
+        auto_session_use_git_branch = true,
+        auto_save_enabled = true,
+      }
     end,
   },
   -- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
