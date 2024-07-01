@@ -11,7 +11,7 @@ vim.g.have_nerd_font = true -- Set to true if you have a Nerd Font installed
 -- Remove this option if you want your OS clipboard to remain independent.
 vim.opt.clipboard = 'unnamedplus' --  See `:help 'clipboard'`
 vim.opt.updatetime = 120 -- Decrease update time
-vim.opt.timeoutlen = 300 -- Decrease mapped sequence wait time : Displays which-key popup sooner
+vim.opt.timeoutlen = 150 -- Decrease mapped sequence wait time : Displays which-key popup sooner
 vim.opt.number = true
 vim.opt.relativenumber = true
 vim.opt.termguicolors = true -- yes use tempr gui colors
@@ -149,6 +149,11 @@ vim.keymap.set('v', '<leader>sc', '"hy:%s/<C-r>h//gc<left><left><left>', { desc 
 vim.keymap.set('v', '<leader>sa', '"hy:%s/<C-r>h/<C-r>h/gc<left><left><left>', { desc = '[S]ubstitute [A]ppend' })
 
 vim.keymap.set('n', 'yp', 'yy<cr>kp<cr>k', { desc = '[Y]ank [P]aste - Duplicate Line' })
+
+vim.keymap.set('n', 'p', '"0p', { silent = true }) -- when using `p` always put last yanked text
+vim.keymap.set('n', 'P', '"0P', { silent = true })
+vim.keymap.set('n', 'dp', '"*p', { silent = true }) -- when using `dp` always put last deleted text
+vim.keymap.set('n', 'dP', '"*P', { silent = true })
 
 -- vim.keymap.set('n', 'p', 'p<leader>f') -- autoformat after paste/put -- Does not work ;_;
 vim.keymap.set('n', '<C-w>n', ':tabnew<cr>', { desc = '[N]ew window' })
@@ -498,6 +503,8 @@ require('lazy').setup({
             i = { ['<c-enter>'] = 'to_fuzzy_refine' },
             i = { ['<Esc><Esc>'] = require('telescope.actions').close },
             n = { ['<Esc><Esc>'] = require('telescope.actions').close },
+            n = { ['<c-d>'] = require('telescope.actions').delete_buffer },
+            i = { ['<c-d>'] = require('telescope.actions').delete_buffer },
           },
         },
         pickers = {},
@@ -523,6 +530,7 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
       vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
       vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
+      vim.keymap.set('n', '<leader>sl', builtin.highlights, { desc = '[S]earch High[L]ights' })
       vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
 
       -- Slightly advanced example of overriding default behavior and theme
@@ -778,7 +786,18 @@ require('lazy').setup({
 
       -- `neodev` configures Lua LSP for your Neovim config, runtime and plugins
       -- used for completion, annotations and signatures of Neovim apis
-      { 'folke/neodev.nvim', opts = {} },
+      -- { 'folke/neodev.nvim', opts = {} },
+      {
+        'folke/lazydev.nvim',
+        ft = 'lua', -- only load on lua files
+        opts = {
+          library = {
+            -- See the configuration section for more details
+            -- Load luvit types when the `vim.uv` word is found
+            { path = 'luvit-meta/library', words = { 'vim%.uv' } },
+          },
+        },
+      },
     },
     config = function()
       -- Brief aside: **What is LSP?**
@@ -1286,9 +1305,9 @@ require('lazy').setup({
 
         ---@type table<string, string>
         local c = {
-          brown = '#644A40',
-          orange = '#ad6639',
-          sand = '#C39D5E',
+          brown = '#845A40',
+          orange = '#a8714d',
+          sand = '#efcfa0',
           white = '#b8a586',
           white_disabled = '#847762',
           teal = '#83A598',
@@ -1302,7 +1321,9 @@ require('lazy').setup({
           pear3 = '#a8bda0',
           pear4 = '#95ad8c',
           gray = '#404040',
+          mid_gray = '#4a4a4a',
           light_gray = '#505050',
+          black = '#101010',
         }
 
         -- '#ad5353' '#ad7653' '#ad9b53' '#92ad53' '#62ad53' '#53ad6d' '#53ad97' '#53a4ad' '#5373ad' '#7d53ad' '#a353ad'
@@ -1355,6 +1376,7 @@ require('lazy').setup({
           'Repeat',
           'Conditional',
           'Operator',
+          '@keyword.type',
           'WinSeparator',
           '@tag.delimiter',
           '@constructor.lua',
@@ -1366,11 +1388,16 @@ require('lazy').setup({
           'Boolean',
           'String',
           'Structure',
+          'Constant',
           'GitSignsChange',
           'CursorLineNr',
           '@constructor',
           '@type.builtin',
         }, { fg = c.sand })
+
+        set_hl({
+          'Typedef',
+        }, { fg = c.pear3 })
 
         set_hl({
           'Identifier',
@@ -1389,6 +1416,10 @@ require('lazy').setup({
           '@module',
         }, { fg = c.pear })
 
+        set_hl({
+          'LeapLabelPrimary',
+        }, { fg = c.black, bg = c.white })
+
         -- TODO: example todo
         -- NOTE: example note
         -- FIXME: example fixme
@@ -1402,7 +1433,6 @@ require('lazy').setup({
         }, { fg = c.pink2 })
 
         set_hl({
-          'Constant',
           'SpecialChar',
           'GitSignsDelete',
           '@constant.builtin',
@@ -1413,7 +1443,7 @@ require('lazy').setup({
         set_hl({
           'Comment',
           'LeapBackdrop',
-        }, { fg = c.gray })
+        }, { fg = c.light_gray })
 
         set_hl({
           'TodoBgFIX',
@@ -1514,7 +1544,7 @@ require('lazy').setup({
                 if #filename > 24 then
                   local ff = vim.fn.split(filename, '/')
                   if #ff > 3 then
-                    filename = ff[1] .. '/.../' .. ff[#ff - 1] .. '/' .. ff[#ff]
+                    filename = ff[1] .. '/.../' .. ff[#ff - 2] .. '/' .. ff[#ff - 1] .. '/' .. ff[#ff]
                   end
                 end
 
@@ -1649,7 +1679,7 @@ require('lazy').setup({
         open_mapping = [[<c-w>t]], -- or { [[<c-\>]], [[<c-¥>]] } if you also use a Japanese keyboard.
         start_in_insert = false,
         direction = 'vertical',
-        size = 80,
+        size = 120,
       }
     end,
   },
@@ -1660,13 +1690,15 @@ require('lazy').setup({
       local leap = require 'leap'
       leap.opts.labels = 'sfnjklhodweimbuyvrgtaqpcxzSFNJKLHODWEIMBUYVRGTAQPCXZ'
       leap.opts.safe_labels = ''
+      leap.opts.highlight_unlabeled_phase_one_targets = true
+
       vim.keymap.set({ 'n', 'x', 'o' }, '<leader>;', '<Plug>(leap)', { desc = '[F]ind Leap' })
     end,
   },
-  {
-    'OXY2DEV/markview.nvim',
-    opts = {},
-  },
+  -- {
+  --   'OXY2DEV/markview.nvim',
+  --   opts = {},
+  -- },
   {
     'rmagatti/auto-session', -- auto save session
     config = function()
@@ -1674,6 +1706,9 @@ require('lazy').setup({
         log_level = 'error',
         auto_session_suppress_dirs = {
           '~/',
+          '~/.config/nvim/*',
+          '~/.config/nvim',
+          '~/.config',
           '~/Downloads',
           '~/Documents',
         },
@@ -1681,6 +1716,14 @@ require('lazy').setup({
         auto_save_enabled = true,
       }
     end,
+  },
+  {
+    dir = '/home/zylkowski_a/lua/vimplixity.nvim',
+    dependencies = {
+      -- 'folke/lazydev.nvim',
+      'lunarmodules/luasocket', -- rock
+      'openresty/lua-cjson', -- rock
+    },
   },
   -- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
