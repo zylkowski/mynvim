@@ -148,6 +148,10 @@ end
 vim.keymap.set('v', '<leader>sc', '"hy:%s/<C-r>h//gc<left><left><left>', { desc = '[S]ubstitute [C]hange' })
 vim.keymap.set('v', '<leader>sa', '"hy:%s/<C-r>h/<C-r>h/gc<left><left><left>', { desc = '[S]ubstitute [A]ppend' })
 
+-- vim.keymap.set('n', '<C-q>', '<C-v>')
+
+vim.keymap.set('v', '<leader>n', ': norm ', { desc = '[N]ormal mode' })
+
 vim.keymap.set('n', 'yp', 'yy<cr>kp<cr>k', { desc = '[Y]ank [P]aste - Duplicate Line' })
 
 vim.keymap.set('n', 'p', '"0p', { silent = true }) -- when using `p` always put last yanked text
@@ -156,7 +160,7 @@ vim.keymap.set('n', 'dp', '"*p', { silent = true }) -- when using `dp` always pu
 vim.keymap.set('n', 'dP', '"*P', { silent = true })
 
 -- vim.keymap.set('n', 'p', 'p<leader>f') -- autoformat after paste/put -- Does not work ;_;
-vim.keymap.set('n', '<C-w>n', ':tabnew<cr>', { desc = '[N]ew window' })
+vim.keymap.set('n', '<C-w>n', ':tabnew<cr>', { desc = '[N]ew tab' })
 
 vim.keymap.set({ 'v', 'n' }, '<M-h>', ':tabprevious<cr>')
 vim.keymap.set({ 'v', 'n' }, '<M-l>', ':tabNext<cr>')
@@ -230,7 +234,7 @@ end
 -- useful for figuring out what higlight groups are relevant for stuff under cursor
 vim.keymap.set('n', '<leader>I', function()
   vim.show_pos()
-end, { desc = '[I]nspect' })
+end, { desc = '[I]nspect higlight groups' })
 
 -- Nice to start off where you left off
 vim.api.nvim_create_autocmd('BufWinEnter', {
@@ -784,20 +788,20 @@ require('lazy').setup({
       -- NOTE: `opts = {}` is the same as calling `require('fidget').setup({})`
       { 'j-hui/fidget.nvim', opts = {} },
 
-      -- `neodev` configures Lua LSP for your Neovim config, runtime and plugins
-      -- used for completion, annotations and signatures of Neovim apis
-      -- { 'folke/neodev.nvim', opts = {} },
-      {
-        'folke/lazydev.nvim',
-        ft = 'lua', -- only load on lua files
-        opts = {
-          library = {
-            -- See the configuration section for more details
-            -- Load luvit types when the `vim.uv` word is found
-            { path = 'luvit-meta/library', words = { 'vim%.uv' } },
-          },
-        },
-      },
+      -- -- `neodev` configures Lua LSP for your Neovim config, runtime and plugins
+      -- -- used for completion, annotations and signatures of Neovim apis
+      -- -- { 'folke/neodev.nvim', opts = {} },
+      -- {
+      --   'folke/lazydev.nvim',
+      --   ft = 'lua', -- only load on lua files
+      --   opts = {
+      --     library = {
+      --       -- See the configuration section for more details
+      --       -- Load luvit types when the `vim.uv` word is found
+      --       { path = 'luvit-meta/library', words = { 'vim%.uv' } },
+      --     },
+      --   },
+      -- },
     },
     config = function()
       -- Brief aside: **What is LSP?**
@@ -930,7 +934,7 @@ require('lazy').setup({
           -- When you move your cursor, the highlights will be cleared (the second autocommand).
           local client = vim.lsp.get_client_by_id(event.data.client_id)
           if client and client.server_capabilities.documentHighlightProvider then
-            local highlight_augroup = vim.api.nvim_create_augroup('kickstart-lsp-highlight', { clear = false })
+            -- local highlight_augroup = vim.api.nvim_create_augroup('kickstart-lsp-highlight', { clear = false })
             -- vim.api.nvim_create_autocmd({ 'CursorHold', 'CursorHoldI' }, {
             --   buffer = event.buf,
             --   group = highlight_augroup,
@@ -1031,6 +1035,24 @@ require('lazy').setup({
               },
               -- You can toggle below to ignore Lua_LS's noisy `missing-fields` warnings
               -- diagnostics = { disable = { 'missing-fields' } },
+              runtime = {
+                -- Tell the language server which version of Lua you're using
+                -- (most likely LuaJIT in the case of Neovim)
+                version = 'LuaJIT',
+              },
+              -- Make the server aware of Neovim runtime files
+              workspace = {
+                checkThirdParty = false,
+                library = {
+                  vim.env.VIMRUNTIME,
+                  -- '/home/zylkowski_a/.local/share/nvim/lazy/',
+                  -- Depending on the usage, you might want to add additional paths here.
+                  -- "${3rd}/luv/library"
+                  -- "${3rd}/busted/library",
+                },
+                -- or pull in all of 'runtimepath'. NOTE: this is a lot slower
+                -- library = vim.api.nvim_get_runtime_file("", true)
+              },
             },
           },
         },
@@ -1304,27 +1326,151 @@ require('lazy').setup({
         end
 
         ---@type table<string, string>
-        local c = {
-          brown = '#845A40',
-          orange = '#a8714d',
-          sand = '#efcfa0',
-          white = '#b8a586',
-          white_disabled = '#847762',
-          teal = '#83A598',
-          blue3 = '#6d86b2',
-          pink = '#bf6079',
-          pinkish = '#df8099',
-          pink2 = '#E7545E',
-          pear = '#8EC07C', -- '#638657', '#637f59' '#4e7440'
+        local dune = {
+          background = '#181818',
+          base = '#845A40',
+          base_toned = '#a8714d',
+          highlighted = '#efcfa0',
+          normal = '#b8a586',
+          disabled = '#847762',
+          attention1 = '#83A598',
+          attention2 = '#6d86b2',
+          important = '#bf6079',
+          important_highlighted = '#df8099',
+          important_darker = '#E7545E',
+          place = '#8EC07C',
           pear2 = '#637f59',
 
-          pear3 = '#a8bda0',
-          pear4 = '#95ad8c',
+          attention3 = '#a8bda0',
+          attention4 = '#95ad8c',
           gray = '#404040',
           mid_gray = '#4a4a4a',
           light_gray = '#505050',
+          dark_gray = '#253535',
           black = '#101010',
         }
+
+        local aqua_rusty = {
+          background = '#181818',
+          base = '#6B7D7D',
+          base_toned = '#8eaf9d',
+          highlighted = '#A6D8D4',
+          normal = '#b8a586',
+          disabled = '#847762',
+          attention1 = '#F7b34B',
+          attention2 = '#f0b36f',
+          important = '#f17c74',
+          important_highlighted = '#fb6c64',
+          important_darker = '#E7545E',
+          place = '#8EC07C',
+          pear2 = '#637f59',
+
+          attention3 = '#a8bda0',
+          attention4 = '#95ad8c',
+          gray = '#404040',
+          mid_gray = '#4a4a4a',
+          light_gray = '#505050',
+          dark_gray = '#253535',
+          black = '#101010',
+        }
+
+        local hulk = {
+          background = '#011628',
+          base = '#4d699e',
+          base_toned = '#3d79ae',
+          highlighted = '#b6c8b4',
+          normal = '#b8a5a6',
+          disabled = '#847772',
+          attention1 = '#a065b2',
+          attention2 = '#d499b9',
+          important = '#f17c74',
+          important_highlighted = '#fb6c64',
+          important_darker = '#E7545E',
+          place = '#8EC07C',
+          pear2 = '#637f59',
+
+          attention3 = '#e8c1c5',
+          attention4 = '#ffb1d4',
+          gray = '#404040',
+          mid_gray = '#4a4a4a',
+          light_gray = '#505050',
+          dark_gray = '#253535',
+          black = '#101010',
+        }
+
+        local ebony = {
+          background = '#181818',
+          base = '#657256',
+          base_toned = '#d3b88c',
+          highlighted = '#b6c8b4',
+          normal = '#b8a586',
+          disabled = '#847772',
+          attention1 = '#F7b35B',
+          attention2 = '#d499b9',
+          important = '#f17c74',
+          important_highlighted = '#fb6c64',
+          important_darker = '#E7545E',
+          place = '#8EC07C',
+          pear2 = '#637f59',
+
+          attention3 = '#d3426e',
+          attention4 = '#e63946',
+          gray = '#404040',
+          mid_gray = '#4a4a4a',
+          light_gray = '#505050',
+          dark_gray = '#253535',
+          black = '#101010',
+        }
+
+        local dunelike = {
+          background = '#181818',
+          base = '#657256',
+          base_toned = '#d3b88c',
+          highlighted = '#b6c8a4',
+          normal = '#b8a586',
+          disabled = '#847772',
+          attention1 = '#ffcfa0',
+          attention2 = '#d499b9',
+          important = '#f17c74',
+          important_highlighted = '#fb6c64',
+          important_darker = '#E7545E',
+          place = '#8EC07C',
+          pear2 = '#637f59',
+
+          attention3 = '#E7545E',
+          attention4 = '#e63946',
+          gray = '#404040',
+          mid_gray = '#4a4a4a',
+          light_gray = '#505050',
+          dark_gray = '#253535',
+          black = '#101010',
+        }
+
+        local mogilska = {
+          background = '#181818',
+          base = '#a64236',
+          base_toned = '#c65246',
+          highlighted = '#f3b88a',
+          normal = '#b8a586',
+          disabled = '#847772',
+          attention1 = '#8EC07C',
+          attention2 = '#7e8f60',
+          important = '#f17c74',
+          important_highlighted = '#fb6c64',
+          important_darker = '#E7545E',
+          place = '#d499b9',
+          pear2 = '#a46999',
+
+          attention3 = '#E7545E',
+          attention4 = '#e63946',
+          gray = '#404040',
+          mid_gray = '#4a4a4a',
+          light_gray = '#505050',
+          dark_gray = '#253535',
+          black = '#101010',
+        }
+
+        local c = dunelike
 
         -- '#ad5353' '#ad7653' '#ad9b53' '#92ad53' '#62ad53' '#53ad6d' '#53ad97' '#53a4ad' '#5373ad' '#7d53ad' '#a353ad'
         --
@@ -1348,43 +1494,64 @@ require('lazy').setup({
 
         -- '#487EB5' '#B8BB26' '#D3869B''#E7545E'  '#b8a586'
 
-        tweak_hl('Search', { fg = c.teal })
-        set_hl('Visual', { bg = c.light_gray })
-        tweak_hl('IncSearch', { fg = c.sand })
+        tweak_hl('Search', { fg = c.attention1 })
+        set_hl('Visual', { bg = c.dark_gray })
+        tweak_hl('IncSearch', { fg = c.highlighted })
         tweak_hl('DiagnosticUnderlineError', { undercurl = true })
-        set_hl('DiagnosticUnnecessary', { fg = c.white_disabled })
+        set_hl('DiagnosticUnnecessary', { fg = c.disabled })
 
         set_hl('NormalFloat', { bg = nil })
 
-        set_hl('Normal', { fg = c.white, bg = '#181818' })
+        set_hl('Normal', { fg = c.normal, bg = c.background })
+        -- vim.api.nvim_create_autocmd('InsertEnter', {
+        --   desc = 'Background change on entering insert mode',
+        --   group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = false }),
+        --   callback = function()
+        --     if buf_is_trivial(0) then
+        --       return
+        --     end
+        --     set_hl('Normal', { fg = c.white, bg = '#181820' })
+        --     theme:apply()
+        --   end,
+        -- })
+        -- vim.api.nvim_create_autocmd('InsertLeave', {
+        --   desc = 'Background change when leaving insert mode',
+        --   group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = false }),
+        --   callback = function()
+        --     set_hl('Normal', { fg = c.white, bg = '#181818' })
+        --     theme:apply()
+        --   end,
+        -- })
+
         set_hl('SignColumn', hl.Normal)
 
         set_hl({
-          'Directory',
-          'Statement',
-          'Function',
-          'Macro',
+          'directory',
+          'statement',
+          'function',
+          'macro',
           '@tag',
           '@function.builtin',
           '@tag.builtin',
-          '@lsp.type.formatSpecifier',
-        }, { fg = c.teal })
+          '@lsp.type.formatspecifier',
+        }, { fg = c.attention1 })
 
         set_hl({
-          'Delimiter',
-          'Keyword',
-          'Repeat',
-          'Conditional',
-          'Operator',
+          'delimiter',
+          'keyword',
+          'repeat',
+          'conditional',
+          'operator',
           '@keyword.type',
-          'WinSeparator',
+          'winseparator',
           '@tag.delimiter',
           '@constructor.lua',
-        }, { fg = c.brown })
+        }, { fg = c.base })
 
         set_hl({
           'Type',
           'Number',
+          'Float',
           'Boolean',
           'String',
           'Structure',
@@ -1393,18 +1560,18 @@ require('lazy').setup({
           'CursorLineNr',
           '@constructor',
           '@type.builtin',
-        }, { fg = c.sand })
+        }, { fg = c.highlighted })
 
         set_hl({
           'Typedef',
-        }, { fg = c.pear3 })
+        }, { fg = c.attention3 })
 
         set_hl({
           'Identifier',
           '@markup.raw',
           '@tag.attribute',
           'markdownBlockQuote',
-        }, { fg = c.white })
+        }, { fg = c.normal })
 
         set_hl({
           'Include',
@@ -1414,11 +1581,11 @@ require('lazy').setup({
           'LeapLabelPrimary',
           '@lsp.type.namespace',
           '@module',
-        }, { fg = c.pear })
+        }, { fg = c.place })
 
         set_hl({
           'LeapLabelPrimary',
-        }, { fg = c.black, bg = c.white })
+        }, { fg = c.black, bg = c.normal })
 
         -- TODO: example todo
         -- NOTE: example note
@@ -1426,11 +1593,11 @@ require('lazy').setup({
         set_hl({
           'TodoBgTODO',
           'TodoBgNOTE',
-        }, { fg = c.gray, bg = c.pear })
+        }, { fg = c.gray, bg = c.place })
 
         set_hl({
           'TodoFgFIX',
-        }, { fg = c.pink2 })
+        }, { fg = c.important_darker })
 
         set_hl({
           'SpecialChar',
@@ -1438,7 +1605,7 @@ require('lazy').setup({
           '@constant.builtin',
           '@lsp.type.lifetime',
           '@lsp.typemod.keyword.async',
-        }, { fg = c.pink })
+        }, { fg = c.important })
 
         set_hl({
           'Comment',
@@ -1448,9 +1615,9 @@ require('lazy').setup({
         set_hl({
           'TodoBgFIX',
           'TodoBgFIXME',
-        }, { fg = c.gray, bg = c.pink2 })
+        }, { fg = c.gray, bg = c.important_darker })
 
-        set_hl('Special', { fg = c.orange })
+        set_hl('Special', { fg = c.base_toned })
 
         set_hl('flogBranch0', { fg = '#458588' })
         set_hl('flogBranch1', { fg = '#458588' })
@@ -1481,11 +1648,11 @@ require('lazy').setup({
           'MiniStatuslineFileinfo',
         }, { bg = hl.StatusLineNC.fg })
 
-        tweak_hl('MiniStatuslineBranch', { fg = c.pear })
-        tweak_hl('MiniStatuslineWorkspaceUnsaved', { fg = c.pink2 })
-        tweak_hl('MiniStatuslineChanges', { fg = c.sand })
-        tweak_hl('MiniStatuslineDiagnostics', { fg = c.teal })
-        tweak_hl('MiniStatuslineFileinfo', { fg = c.teal })
+        tweak_hl('MiniStatuslineBranch', { fg = c.place })
+        tweak_hl('MiniStatuslineWorkspaceUnsaved', { fg = c.important_darker })
+        tweak_hl('MiniStatuslineChanges', { fg = c.highlighted })
+        tweak_hl('MiniStatuslineDiagnostics', { fg = c.attention1 })
+        tweak_hl('MiniStatuslineFileinfo', { fg = c.attention1 })
 
         set_hl({
           'MiniStatuslineModeNormal',
@@ -1493,9 +1660,9 @@ require('lazy').setup({
           'MiniStatuslineModeInsert',
         }, { fg = hl.StatusLineNC.fg })
 
-        tweak_hl('MiniStatuslineModeNormal', { bg = c.sand })
-        tweak_hl('MiniStatuslineModeVisual', { bg = c.pink })
-        tweak_hl('MiniStatuslineModeInsert', { bg = c.teal })
+        tweak_hl('MiniStatuslineModeNormal', { bg = c.highlighted })
+        tweak_hl('MiniStatuslineModeVisual', { bg = c.important })
+        tweak_hl('MiniStatuslineModeInsert', { bg = c.attention1 })
 
         ---@diagnostic disable-next-line: undefined-field
         theme:apply()
@@ -1662,6 +1829,14 @@ require('lazy').setup({
       ---@diagnostic disable-next-line: missing-fields
       require('nvim-treesitter.configs').setup(opts)
 
+      local parser_config = require('nvim-treesitter.parsers').get_parser_configs()
+      parser_config.bend = {
+        install_info = {
+          url = os.getenv 'HOME' .. '/.config/nvim/lua/custom/tree-sitter-bend', -- local path or git repo
+          files = { 'src/parser.c' }, -- note that some parsers also require src/scanner.c or src/scanner.cc
+          branch = 'main', -- default branch in case of git repo if different from master
+        },
+      }
       -- There are additional nvim-treesitter modules that you can use to interact
       -- with nvim-treesitter. You should go explore a few and see what interests you:
       --
@@ -1717,14 +1892,22 @@ require('lazy').setup({
       }
     end,
   },
-  {
-    dir = '/home/zylkowski_a/lua/vimplixity.nvim',
-    dependencies = {
-      -- 'folke/lazydev.nvim',
-      'lunarmodules/luasocket', -- rock
-      'openresty/lua-cjson', -- rock
-    },
-  },
+  -- {
+  --   'chentoast/live.nvim',
+  --   init = function()
+  --     require('live').setup()
+  --   end,
+  -- },
+  -- {
+  --   dir = 'custom.plugins.vimplixity',
+  --   dependencies = {
+  --     'lunarmodules/luasocket', -- rock
+  --     'openresty/lua-cjson', -- rock
+  --   },
+  --   init = function()
+  --     require 'custom.plugins.vimplixity'
+  --   end,
+  -- },
   -- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
   -- place them in the correct locations.
