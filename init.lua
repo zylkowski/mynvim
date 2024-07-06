@@ -165,6 +165,11 @@ vim.keymap.set('n', '<C-w>n', ':tabnew<cr>', { desc = '[N]ew tab' })
 vim.keymap.set({ 'v', 'n' }, '<M-h>', ':tabprevious<cr>')
 vim.keymap.set({ 'v', 'n' }, '<M-l>', ':tabNext<cr>')
 
+-- unbind default grn gra grr
+vim.keymap.del('n', 'grn')
+vim.keymap.del({ 'n', 'x' }, 'gra')
+vim.keymap.del('n', 'grr')
+
 -- vim.keymap.set('n', '<M-j>', '12j')
 -- vim.keymap.set('n', '<M-k>', '12k')
 do
