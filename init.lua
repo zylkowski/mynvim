@@ -1,5 +1,9 @@
 -- MY FUCKING INIT ~Arek
 
+-- TODO:
+-- - rust-analyzer only works when in .rs file. I'd like it to work already when in folder with Cargo.toml
+-- -
+
 -- NOTE: :help localleader
 vim.g.mapleader = ' ' -- Set <space> as the leader key
 vim.g.maplocalleader = ' ' --- Set <space> as the local leader key
@@ -10,8 +14,8 @@ vim.g.have_nerd_font = true -- Set to true if you have a Nerd Font installed
 -- Sync clipboard between OS and Neovim.
 -- Remove this option if you want your OS clipboard to remain independent.
 vim.opt.clipboard = 'unnamedplus' --  See `:help 'clipboard'`
-vim.opt.updatetime = 120 -- Decrease update time
-vim.opt.timeoutlen = 150 -- Decrease mapped sequence wait time : Displays which-key popup sooner
+vim.opt.updatetime = 80 -- Decrease update time
+vim.opt.timeoutlen = 80 -- Decrease mapped sequence wait time : Displays which-key popup sooner
 vim.opt.number = true
 vim.opt.relativenumber = true
 vim.opt.termguicolors = true -- yes use tempr gui colors
@@ -37,6 +41,12 @@ vim.opt.hlsearch = true -- Set highlight on search, but clear on pressing <Esc> 
 vim.opt.tabstop = 4
 vim.opt.shiftwidth = 4
 vim.opt.expandtab = true
+
+vim.filetype.add {
+  extension = {
+    bend = 'bend',
+  },
+}
 
 vim.diagnostic.config {
   virtual_text = {
@@ -145,20 +155,26 @@ end
 --========================= ESC BINDINGS ==================
 --=========================================================
 
+-- dont insert comment when pressed 'o' or 'O' in normal mode when cursor is on comment
+vim.cmd 'autocmd BufEnter * set formatoptions-=cro'
+vim.cmd 'autocmd BufEnter * setlocal formatoptions-=cro'
+
 vim.keymap.set('v', '<leader>sc', '"hy:%s/<C-r>h//gc<left><left><left>', { desc = '[S]ubstitute [C]hange' })
 vim.keymap.set('v', '<leader>sa', '"hy:%s/<C-r>h/<C-r>h/gc<left><left><left>', { desc = '[S]ubstitute [A]ppend' })
 
 -- vim.keymap.set('n', '<C-q>', '<C-v>')
 
+vim.keymap.set('i', '<C-H>', '<C-W>')
+
 vim.keymap.set('v', '<leader>n', ': norm ', { desc = '[N]ormal mode' })
 
 vim.keymap.set('n', 'yp', 'yy<cr>kp<cr>k', { desc = '[Y]ank [P]aste - Duplicate Line' })
 
-vim.keymap.set('n', 'p', '"0p', { silent = true }) -- when using `p` always put last yanked text
-vim.keymap.set('n', 'P', '"0P', { silent = true })
-vim.keymap.set('n', 'dp', '"*p', { silent = true }) -- when using `dp` always put last deleted text
-vim.keymap.set('n', 'dP', '"*P', { silent = true })
-
+-- vim.keymap.set('n', 'p', '"0p', { silent = true }) -- when using `p` always put last yanked text
+-- vim.keymap.set('n', 'P', '"0P', { silent = true })
+-- vim.keymap.set('n', 'dp', '"*p', { silent = true }) -- when using `dp` always put last deleted text
+-- vim.keymap.set('n', 'dP', '"*P', { silent = true })
+--
 -- vim.keymap.set('n', 'p', 'p<leader>f') -- autoformat after paste/put -- Does not work ;_;
 vim.keymap.set('n', '<C-w>n', ':tabnew<cr>', { desc = '[N]ew tab' })
 
@@ -169,6 +185,15 @@ vim.keymap.set({ 'v', 'n' }, '<M-l>', ':tabNext<cr>')
 vim.keymap.del('n', 'grn')
 vim.keymap.del({ 'n', 'x' }, 'gra')
 vim.keymap.del('n', 'grr')
+
+vim.keymap.set('n', '<leader>U', function()
+  local code = vim.fn.input 'u:'
+  local char = vim.fn.nr2char(code)
+  local _, col = unpack(vim.api.nvim_win_get_cursor(0))
+  local line = vim.api.nvim_get_current_line()
+  local new_line = line:sub(1, col) .. char .. line:sub(col + 1)
+  vim.api.nvim_set_current_line(new_line)
+end, { desc = 'insert unicode' })
 
 -- vim.keymap.set('n', '<M-j>', '12j')
 -- vim.keymap.set('n', '<M-k>', '12k')
@@ -220,7 +245,15 @@ vim.keymap.set('n', '<leader>qf', function()
   -- end
 end)
 
-vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
+function _G.set_terminal_keymaps()
+  local opts = { buffer = 0 }
+  vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
+  -- vim.keymap.set('t', '<esc>', [[<C-\><C-n>]], opts)
+  vim.keymap.set('t', 'jk', [[<C-\><C-n>]], opts)
+end
+
+-- if you only want these mappings for toggle term use term://*toggleterm#* instead
+vim.cmd 'autocmd! TermOpen term://* lua set_terminal_keymaps()'
 
 -- NOTE: swap lines like in vscode
 --
@@ -259,28 +292,28 @@ vim.api.nvim_create_autocmd('BufWinEnter', {
 --  See `:help lua-guide-autocommands`
 
 -- Leaving Insert mode after 15 seconds inactivity
-vim.api.nvim_create_autocmd('CursorHoldI', {
-  desc = 'Escape insert mode after inactivity',
-  group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = true }),
-  callback = function()
-    vim.cmd ':stopinsert'
-  end,
-})
-vim.api.nvim_create_autocmd('InsertEnter', {
-  desc = 'Escape insert mode after inactivity',
-  group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = false }),
-  callback = function()
-    vim.g.updaterestore = vim.opt.updatetime:get()
-    vim.opt.updatetime = 15000
-  end,
-})
-vim.api.nvim_create_autocmd('InsertLeave', {
-  desc = 'Escape insert mode after inactivity',
-  group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = false }),
-  callback = function()
-    vim.opt.updatetime = vim.g.updaterestore
-  end,
-})
+-- vim.api.nvim_create_autocmd('CursorHoldI', {
+--   desc = 'Escape insert mode after inactivity',
+--   group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = true }),
+--   callback = function()
+--     vim.cmd ':stopinsert'
+--   end,
+-- })
+-- vim.api.nvim_create_autocmd('InsertEnter', {
+--   desc = 'Escape insert mode after inactivity',
+--   group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = false }),
+--   callback = function()
+--     vim.g.updaterestore = vim.opt.updatetime:get()
+--     vim.opt.updatetime = 15000
+--   end,
+-- })
+-- vim.api.nvim_create_autocmd('InsertLeave', {
+--   desc = 'Escape insert mode after inactivity',
+--   group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = false }),
+--   callback = function()
+--     vim.opt.updatetime = vim.g.updaterestore
+--   end,
+-- })
 
 -- Highlight when yanking (copying) text
 --  Try it with `yap` in normal mode
@@ -426,26 +459,45 @@ require('lazy').setup({
     config = function() -- This is the function that runs, AFTER loading
       require('which-key').setup {
 
-        window = {
+        win = {
           border = 'rounded', -- none, single, double, shadow
         },
       }
 
       -- Document existing key chains
-      require('which-key').register {
-        ['<leader>c'] = { name = '[C]ode', _ = 'which_key_ignore' },
-        ['<leader>d'] = { name = '[D]ocument', _ = 'which_key_ignore' },
-        ['<leader>r'] = { name = '[R]ename', _ = 'which_key_ignore' },
-        ['<leader>s'] = { name = '[S]earch', _ = 'which_key_ignore' },
-        ['<leader>w'] = { name = '[W]orkspace', _ = 'which_key_ignore' },
-        ['<leader>t'] = { name = '[T]oggle', _ = 'which_key_ignore' },
-        ['<leader>h'] = { name = 'Git [H]unk', _ = 'which_key_ignore' },
-        ['<leader>g'] = { name = '[G]it', _ = 'which_key_ignore' },
+      require('which-key').add {
+
+        { '<leader>c', group = '[C]ode' },
+        { '<leader>c_', hidden = true },
+        { '<leader>d', group = '[D]ocument' },
+        { '<leader>d_', hidden = true },
+        { '<leader>g', group = '[G]it' },
+        { '<leader>g_', hidden = true },
+        { '<leader>h', group = 'Git [H]unk' },
+        { '<leader>h_', hidden = true },
+        { '<leader>r', group = '[R]ename' },
+        { '<leader>r_', hidden = true },
+        { '<leader>s', group = '[S]earch' },
+        { '<leader>s_', hidden = true },
+        { '<leader>t', group = '[T]oggle' },
+        { '<leader>t_', hidden = true },
+        { '<leader>w', group = '[W]orkspace' },
+        { '<leader>w_', hidden = true },
+        -- ['<leader>c'] = { name = '[C]ode', _ = 'which_key_ignore' },
+        -- ['<leader>d'] = { name = '[D]ocument', _ = 'which_key_ignore' },
+        -- ['<leader>r'] = { name = '[R]ename', _ = 'which_key_ignore' },
+        -- ['<leader>s'] = { name = '[S]earch', _ = 'which_key_ignore' },
+        -- ['<leader>w'] = { name = '[W]orkspace', _ = 'which_key_ignore' },
+        -- ['<leader>t'] = { name = '[T]oggle', _ = 'which_key_ignore' },
+        -- ['<leader>h'] = { name = 'Git [H]unk', _ = 'which_key_ignore' },
+        -- ['<leader>g'] = { name = '[G]it', _ = 'which_key_ignore' },
       }
       -- visual mode
-      require('which-key').register({
-        ['<leader>h'] = { 'Git [H]unk' },
-        ['<leader>s'] = { '[S]ubstitute' },
+      require('which-key').add({
+        { '<leader>h', desc = 'Git [H]unk', mode = 'v' },
+        { '<leader>s', desc = '[S]ubstitute', mode = 'v' },
+        -- ['<leader>h'] = { 'Git [H]unk' },
+        -- ['<leader>s'] = { '[S]ubstitute' },
       }, { mode = 'v' })
     end,
   },
@@ -509,11 +561,17 @@ require('lazy').setup({
         --
         defaults = {
           mappings = {
-            i = { ['<c-enter>'] = 'to_fuzzy_refine' },
-            i = { ['<Esc><Esc>'] = require('telescope.actions').close },
-            n = { ['<Esc><Esc>'] = require('telescope.actions').close },
-            n = { ['<c-d>'] = require('telescope.actions').delete_buffer },
-            i = { ['<c-d>'] = require('telescope.actions').delete_buffer },
+            i = {
+              ['<c-enter>'] = 'to_fuzzy_refine',
+              ['<Esc>'] = require('telescope.actions').close,
+              ['<Right>'] = require('telescope.actions').select_default,
+              ['<c-d>'] = require('telescope.actions').delete_buffer,
+            },
+            n = {
+              ['<Esc>'] = require('telescope.actions').close,
+              ['<Right>'] = require('telescope.actions').select_default,
+              ['<c-d>'] = require('telescope.actions').delete_buffer,
+            },
           },
         },
         pickers = {},
@@ -547,7 +605,7 @@ require('lazy').setup({
         -- You can pass additional configuration to Telescope to change the theme, layout, etc.
         builtin.current_buffer_fuzzy_find(require('telescope.themes').get_dropdown {
           winblend = 10,
-          previewer = false,
+          -- previewer = false,
         })
       end, { desc = '[/] Fuzzily search in current buffer' })
 
@@ -803,41 +861,13 @@ require('lazy').setup({
       --     library = {
       --       -- See the configuration section for more details
       --       -- Load luvit types when the `vim.uv` word is found
-      --       { path = 'luvit-meta/library', words = { 'vim%.uv' } },
+      --       -- { path = 'luvit-meta/library', words = { 'vim%.uv' } },
+      --       "/home/zylkowski_a/.local/share/nvim/lazy"
       --     },
       --   },
       -- },
     },
     config = function()
-      -- Brief aside: **What is LSP?**
-      --
-      -- LSP is an initialism you've probably heard, but might not understand what it is.
-      --
-      -- LSP stands for Language Server Protocol. It's a protocol that helps editors
-      -- and language tooling communicate in a standardized fashion.
-      --
-      -- In general, you have a "server" which is some tool built to understand a particular
-      -- language (such as `gopls`, `lua_ls`, `rust_analyzer`, etc.). These Language Servers
-      -- (sometimes called LSP servers, but that's kind of like ATM Machine) are standalone
-      -- processes that communicate with some "client" - in this case, Neovim!
-      --
-      -- LSP provides Neovim with features like:
-      --  - Go to definition
-      --  - Find references
-      --  - Autocompletion
-      --  - Symbol Search
-      --  - and more!
-      --
-      -- Thus, Language Servers are external tools that must be installed separately from
-      -- Neovim. This is where `mason` and related plugins come into play.
-      --
-      -- If you're wondering about lsp vs treesitter, you can check out the wonderfully
-      -- and elegantly composed help section, `:help lsp-vs-treesitter`
-
-      --  This function gets run when an LSP attaches to a particular buffer.
-      --    That is to say, every time a new file is opened that is associated with
-      --    an lsp (for example, opening `main.rs` is associated with `rust_analyzer`) this
-      --    function will be executed to configure the current buffer
       vim.api.nvim_create_autocmd('LspAttach', {
         group = vim.api.nvim_create_augroup('kickstart-lsp-attach', { clear = true }),
         callback = function(event)
@@ -952,13 +982,13 @@ require('lazy').setup({
             --   callback = vim.lsp.buf.clear_references,
             -- })
 
-            vim.api.nvim_create_autocmd('LspDetach', {
-              group = vim.api.nvim_create_augroup('kickstart-lsp-detach', { clear = true }),
-              callback = function(event2)
-                vim.lsp.buf.clear_references()
-                vim.api.nvim_clear_autocmds { group = 'kickstart-lsp-highlight', buffer = event2.buf }
-              end,
-            })
+            -- vim.api.nvim_create_autocmd('LspDetach', {
+            --   group = vim.api.nvim_create_augroup('kickstart-lsp-detach', { clear = true }),
+            --   callback = function(event2)
+            --     vim.lsp.buf.clear_references()
+            --     vim.api.nvim_clear_autocmds { group = 'kickstart-lsp-highlight', buffer = event2.buf }
+            --   end,
+            -- })
           end
 
           -- wraps normal diagnostics callback so we can get some extra information
@@ -1093,19 +1123,6 @@ require('lazy').setup({
       }
     end,
   },
-  -- {
-  --   'mrcjkb/rustaceanvim',
-  --   version = '^4', -- Recommended
-  --   lazy = false, -- This plugin is already lazy
-  --   init = function()
-  --     local bufnr = vim.api.nvim_get_current_buf()
-  --     vim.keymap.set('n', '<leader>a', function()
-  --       vim.cmd.RustLsp 'codeAction' -- supports rust-analyzer's grouping
-  --       -- or vim.lsp.buf.codeAction() if you don't want grouping.
-  --     end, { silent = true, buffer = bufnr, desc = 'Rust Code Action' })
-  --   end,
-  -- },
-
   { -- Autoformat
     'stevearc/conform.nvim',
     lazy = false,
@@ -1215,6 +1232,7 @@ require('lazy').setup({
           -- If you prefer more traditional completion keymaps,
           -- you can uncomment the following lines
           ['<Tab>'] = cmp.mapping.confirm { select = true },
+          -- ['<Right>'] = cmp.mapping.confirm { select = true },
           --['<Tab>'] = cmp.mapping.select_next_item(),
           --['<S-Tab>'] = cmp.mapping.select_prev_item(),
 
@@ -1223,15 +1241,16 @@ require('lazy').setup({
           --  completions whenever it has completion options available.
           ['<C-Space>'] = cmp.mapping.complete {},
 
-          -- unmap down,up and cr key, I still want to be able to move around text even if autocompletion is brought up
-          ['<Down>'] = cmp.mapping(function(fallback)
-            cmp.close()
-            fallback()
-          end, { 'i' }),
-          ['<Up>'] = cmp.mapping(function(fallback)
-            cmp.close()
-            fallback()
-          end, { 'i' }),
+          -- -- unmap down,up and cr key, I still want to be able to move around text even if autocompletion is brought up
+          -- ['<Down>'] = cmp.mapping(function(fallback)
+          --   cmp.close()
+          --   fallback()
+          -- end, { 'i' }),
+          -- ['<Up>'] = cmp.mapping(function(fallback)
+          --   cmp.close()
+          --   fallback()
+          -- end, { 'i' }),
+          -- a
           ['<CR>'] = cmp.mapping(function(fallback)
             cmp.close()
             fallback()
@@ -1266,31 +1285,8 @@ require('lazy').setup({
       }
     end,
   },
-  -- { -- My theme
-  --   'rose-pine/neovim',
-  --   priority = 1000, -- Make sure to load this before all the other start plugins.
-  --   init = function()
-  --     require('rose-pine').setup { styles = { italic = false } } -- This has to be before `vim.cmd.colorscheme` in order to work properly
-  --     -- Load the colorscheme here.
-  --     vim.cmd.colorscheme 'rose-pine'
-  --   end,
-  -- },
-  -- {
-  --   'sho-87/kanagawa-paper.nvim',
-  --   priority = 1000,
-  --   init = function()
-  --     require('kanagawa-paper').setup {
-  --       commentStyle = {
-  --
-  --       },
-  --     }
-  --     vim.cmd.colorscheme 'kanagawa-paper'
-  --   end,
-  -- },
-
   -- Highlight todo, notes, etc in comments
   { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
-
   { -- Collection of various small independent plugins/modules
     'echasnovski/mini.nvim',
     config = function()
@@ -1534,7 +1530,6 @@ require('lazy').setup({
           'directory',
           'statement',
           'function',
-          'macro',
           '@tag',
           '@function.builtin',
           '@tag.builtin',
@@ -1610,6 +1605,7 @@ require('lazy').setup({
           '@constant.builtin',
           '@lsp.type.lifetime',
           '@lsp.typemod.keyword.async',
+          'Macro',
         }, { fg = c.important })
 
         set_hl({
@@ -1856,10 +1852,10 @@ require('lazy').setup({
     init = function()
       require('toggleterm').setup {
         -- size can be a number or function which is passed the current terminal
-        open_mapping = [[<c-w>t]], -- or { [[<c-\>]], [[<c-¥>]] } if you also use a Japanese keyboard.
-        start_in_insert = false,
+        open_mapping = [[<F12>]], -- or { [[<c-\>]], [[<c-¥>]] } if you also use a Japanese keyboard.
+        start_in_insert = true,
         direction = 'vertical',
-        size = 120,
+        size = 100,
       }
     end,
   },
@@ -1897,6 +1893,27 @@ require('lazy').setup({
       }
     end,
   },
+  {
+    'michaelb/sniprun',
+    build = 'bash ./install.sh',
+    opts = {
+      selected_interpreters = { 'Lua_nvim' },
+      display = { 'Classic' },
+    },
+    init = function()
+      require('sniprun').setup {
+        display = { 'TempFloatingWindow' },
+      }
+      vim.keymap.set({ 'n', 'v' }, '<leader>r', ':SnipRun<CR>', { desc = 'run curr line with sniprun' })
+      -- vim.keymap.set('v', '<leader>r', ":'<,'>SnipRun<CR>", { desc = 'run curr selection with sniprun' })
+    end,
+  },
+  {
+    'ggandor/leap-spooky.nvim',
+    init = function()
+      require('leap-spooky').setup()
+    end,
+  },
   -- {
   --   'chentoast/live.nvim',
   --   init = function()
@@ -1926,7 +1943,7 @@ require('lazy').setup({
   require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
   require 'kickstart.plugins.autopairs',
-  require 'kickstart.plugins.neo-tree',
+  -- require 'kickstart.plugins.neo-tree',
   -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
 
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
