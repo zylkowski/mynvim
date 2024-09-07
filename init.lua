@@ -625,96 +625,6 @@ require('lazy').setup({
     end,
   },
 
-  -- TODO: CONSIDER neogit ....
-  -- NOTE: Git plugins ...
-  {
-    'rbong/vim-flog',
-    dependencies = {
-      'tpope/vim-fugitive',
-      'sindrets/diffview.nvim',
-    },
-    config = function()
-      -- vim.keymap.set('n', '<leader>gl', ':Flog -all -date=relative<cr>', { desc = '[G]it [L]og' })
-      vim.keymap.set('n', '<leader>gl', function()
-        -- whenever we enter a flog buffer we want to register
-        -- this autocommand ONCE, it in turn registers the esc esc
-        -- key binding on the buffer in it such that it's easy to
-        -- leave flog
-        vim.api.nvim_create_autocmd({ 'BufEnter' }, {
-          callback = function(ctx)
-            -- this helps us catch any bugs, if we see this in the fidget history
-            -- then we know that we did not deregister the autocommand correctly, the use of once should make this automatic
-            require('fidget').notify('flog - buf enter', '@comment.error', { annote = 'FLOG' })
-            esc_esc_once_buf(ctx.buf)
-          end,
-          once = true,
-        })
-        vim.cmd [[:Flog -all -max-count=999999 -date=relative]]
-        vim.schedule(function()
-          vim.fn.search 'HEAD ->'
-        end)
-        vim.api.nvim_feedkeys('zz', 'n', false)
-      end, { desc = '[G]it [L]og' })
-      -- vim.keymap.set('n', '<leader>gl', ':Flog -format=%ar%x20[%h]%x20%d%x20%an <cr>', { desc = '[G]it [L]og' })
-      vim.keymap.set('n', '<leader>gs', ':Git<cr>', { desc = '[G]it [S]tatus' })
-
-      -- Returns the selected commit by fugitive, the one selected by hitting enter
-      -- ... we are able to do this by finding the loaded buffer for fugitive
-      -- that flog uses, and extract its commit hash
-      --- @return string
-      local function flogSelectedCommit()
-        local buffers = vim.api.nvim_list_bufs()
-        for _, buffer in ipairs(buffers) do
-          local name = vim.api.nvim_buf_get_name(buffer)
-          local loaded = vim.api.nvim_buf_is_loaded(buffer)
-          if loaded and name then
-            local isFugitive = string.match(name, 'fugitive:.*git//%x*')
-            if isFugitive then
-              local h = string.match(name, '%x*$')
-              if h then
-                return string.sub(h, 1, 7)
-              end
-            end
-          end
-        end
-        return ''
-      end
-
-      -- get the commit under the cursor
-      --- @return boolean, string asdfasdf
-      local function flogCommitUnderCursor()
-        return pcall(vim.fn['flog#Format'], '%H')
-      end
-
-      -- NOTE: opens up diffview relative to commit under cursor
-      vim.keymap.set('n', ',', function()
-        local ok, commit = flogCommitUnderCursor()
-        if ok then
-          return ':DiffviewOpen ' .. commit .. '<cr>'
-        end
-      end, { expr = true, desc = 'display changes of HEAD relative to commit under cursor' })
-
-      -- NOTE: opens up diffview for change introduced by commit under cursor
-      vim.keymap.set('n', ';', function()
-        local ok, commit = flogCommitUnderCursor()
-        if ok then
-          return ':DiffviewOpen ' .. commit .. '^!<cr>'
-        end
-      end, { expr = true, desc = 'display changes introduced by commit under cursor' })
-
-      vim.keymap.set('n', '-', function()
-        local ok, cc = flogCommitUnderCursor()
-        if ok then
-          local h = flogSelectedCommit()
-          if h == '' then
-            return
-          end
-          return ':DiffviewOpen ' .. cc .. '..' .. h .. '<cr>'
-        end
-      end, { expr = true })
-    end,
-  },
-
   {
     'lewis6991/gitsigns.nvim',
     opts = {
@@ -779,7 +689,7 @@ require('lazy').setup({
             local buf = vim.api.nvim_win_get_buf(wins[3])
             if buf_is_trivial(buf) then
               print 'no change'
-              vim.cmd [[:DiffviewClose]]
+              -- vim.cmd [[:DiffviewClose]]
               return
             end
 
@@ -1036,7 +946,7 @@ require('lazy').setup({
       local servers = {
         -- clangd = {},
         -- gopls = {},
-        -- pyright = {},
+        pyright = {},
         -- rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
         --
@@ -1044,7 +954,7 @@ require('lazy').setup({
         --    https://github.com/pmizio/typescript-tools.nvim
         --
         -- But for many setups, the LSP (`tsserver`) will work just fine
-        -- tsserver = {},
+        tsserver = {},
         --
         rust_analyzer = {
           settings = {
@@ -1150,12 +1060,17 @@ require('lazy').setup({
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
-        -- Conform can also run multiple formatters sequentially
-        -- python = { "isort", "black" },
+        --
+        python = { 'isort', 'black' },
+        json = { 'jq' },
         --
         -- You can use a sub-list to tell conform to run *until* a formatter
         -- is found.
+        -- TODO: actually configure to use prettier for javascript + typescript
         -- javascript = { { "prettierd", "prettier" } },
+        javascript = { 'prettier' },
+        typescript = { 'prettier' },
+        typescriptreact = { 'prettier' },
       },
     },
   },
@@ -1195,6 +1110,7 @@ require('lazy').setup({
       --  into multiple repos for maintenance purposes.
       'hrsh7th/cmp-nvim-lsp',
       'hrsh7th/cmp-path',
+      'hrsh7th/cmp-nvim-lsp-signature-help',
     },
     config = function()
       -- See `:help cmp`
@@ -1471,7 +1387,31 @@ require('lazy').setup({
           black = '#101010',
         }
 
-        local c = dunelike
+        local puple = {
+          background = '#181825',
+          base = '#8468a9',
+          base_toned = '#a46999',
+          highlighted = '#f3b88a',
+          normal = '#b8a586',
+          disabled = '#847772',
+          attention1 = '#8EC07C',
+          attention2 = '#7e8f60',
+          important = '#f17c74',
+          important_highlighted = '#fb6c64',
+          important_darker = '#E7545E',
+          place = '#d499b9',
+          pear2 = '#a46999',
+
+          attention3 = '#E7545E',
+          attention4 = '#e63946',
+          gray = '#404040',
+          mid_gray = '#4a4a4a',
+          light_gray = '#505050',
+          dark_gray = '#253535',
+          black = '#101010',
+        }
+
+        local c = puple
 
         -- '#ad5353' '#ad7653' '#ad9b53' '#92ad53' '#62ad53' '#53ad6d' '#53ad97' '#53a4ad' '#5373ad' '#7d53ad' '#a353ad'
         --
@@ -1546,6 +1486,7 @@ require('lazy').setup({
           'winseparator',
           '@tag.delimiter',
           '@constructor.lua',
+          'GitGraphHash',
         }, { fg = c.base })
 
         set_hl({
@@ -1560,6 +1501,7 @@ require('lazy').setup({
           'CursorLineNr',
           '@constructor',
           '@type.builtin',
+          'GitGraphTimestamp',
         }, { fg = c.highlighted })
 
         set_hl({
@@ -1571,6 +1513,7 @@ require('lazy').setup({
           '@markup.raw',
           '@tag.attribute',
           'markdownBlockQuote',
+          'GitGraphBranchMsg',
         }, { fg = c.normal })
 
         set_hl({
@@ -1581,6 +1524,7 @@ require('lazy').setup({
           'LeapLabelPrimary',
           '@lsp.type.namespace',
           '@module',
+          'GitGraphAuthor',
         }, { fg = c.place })
 
         set_hl({
@@ -1790,17 +1734,6 @@ require('lazy').setup({
       --  Check out: https://github.com/echasnovski/mini.nvim
     end,
   },
-  {
-    'nvim-treesitter/nvim-treesitter-context',
-    opts = {
-      multiline_threshold = 1,
-    },
-    init = function()
-      vim.keymap.set('n', '[c', function()
-        require('treesitter-context').go_to_context(vim.v.count1)
-      end, { silent = true, desc = 'jump to line of parent context' })
-    end,
-  },
   -- {
   --   'nvim-treesitter/nvim-treesitter-textobjects',
   --   opts = {},
@@ -1844,6 +1777,17 @@ require('lazy').setup({
       --    - Incremental selection: Included, see `:help nvim-treesitter-incremental-selection-mod`
       --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
       --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
+    end,
+  },
+  {
+    'nvim-treesitter/nvim-treesitter-context',
+    opts = {
+      multiline_threshold = 1,
+    },
+    init = function()
+      vim.keymap.set('n', '[c', function()
+        require('treesitter-context').go_to_context(vim.v.count1)
+      end, { silent = true, desc = 'jump to line of parent context' })
     end,
   },
   {
@@ -1914,6 +1858,40 @@ require('lazy').setup({
       require('leap-spooky').setup()
     end,
   },
+  {
+    'isakbm/gitgraph.nvim',
+    opts = {
+      symbols = {
+        merge_commit = 'M',
+        commit = '*',
+      },
+      format = {
+        timestamp = '%H:%M:%S %d-%m-%Y',
+        fields = { 'hash', 'timestamp', 'author', 'branch_name', 'tag' },
+      },
+      hooks = {
+        on_select_commit = function(commit)
+          print('selected commit:', commit.hash)
+          vim.notify('DiffviewOpen ' .. commit.hash .. '^!')
+          vim.cmd(':DiffviewOpen ' .. commit.hash .. '^!')
+        end,
+        on_select_range_commit = function(from, to)
+          print('selected range:', from.hash, to.hash)
+          vim.notify('DiffviewOpen ' .. from.hash .. '~1..' .. to.hash)
+          vim.cmd(':DiffviewOpen ' .. from.hash .. '~1..' .. to.hash)
+        end,
+      },
+    },
+    keys = {
+      {
+        '<leader>gl',
+        function()
+          require('gitgraph').draw({}, { all = true, max_count = 5000 })
+        end,
+        desc = 'GitGraph - Draw',
+      },
+    },
+  },
   -- {
   --   'chentoast/live.nvim',
   --   init = function()
@@ -1943,7 +1921,7 @@ require('lazy').setup({
   require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
   require 'kickstart.plugins.autopairs',
-  -- require 'kickstart.plugins.neo-tree',
+  require 'kickstart.plugins.neo-tree',
   -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
 
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
