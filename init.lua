@@ -14,7 +14,7 @@ vim.g.have_nerd_font = true -- Set to true if you have a Nerd Font installed
 -- Sync clipboard between OS and Neovim.
 -- Remove this option if you want your OS clipboard to remain independent.
 vim.opt.clipboard = 'unnamedplus' --  See `:help 'clipboard'`
-vim.opt.updatetime = 80 -- Decrease update time
+vim.opt.updatetime = 80 -- update time
 vim.opt.timeoutlen = 80 -- Decrease mapped sequence wait time : Displays which-key popup sooner
 vim.opt.number = true
 vim.opt.relativenumber = true
@@ -37,6 +37,9 @@ vim.opt.inccommand = 'split' -- Preview substitutions live, as you type!
 vim.opt.cursorline = true -- Show which line your cursor is on
 vim.opt.scrolloff = 16 -- Minimal number of screen lines to keep above and below the cursor.
 vim.opt.hlsearch = true -- Set highlight on search, but clear on pressing <Esc> in normal mode
+vim.opt.numberwidth = 3
+vim.opt.autoread = true
+-- vim.o.autochdir = true
 
 vim.opt.tabstop = 4
 vim.opt.shiftwidth = 4
@@ -156,8 +159,11 @@ end
 --=========================================================
 
 -- dont insert comment when pressed 'o' or 'O' in normal mode when cursor is on comment
-vim.cmd 'autocmd BufEnter * set formatoptions-=cro'
-vim.cmd 'autocmd BufEnter * setlocal formatoptions-=cro'
+vim.cmd 'autocmd InsertLeave * set formatoptions-=cro'
+vim.cmd 'autocmd InsertLeave * setlocal formatoptions-=cro'
+
+vim.cmd 'autocmd InsertEnter * set formatoptions+=cro'
+vim.cmd 'autocmd InsertEnter * setlocal formatoptions+=cro'
 
 vim.keymap.set('v', '<leader>sc', '"hy:%s/<C-r>h//gc<left><left><left>', { desc = '[S]ubstitute [C]hange' })
 vim.keymap.set('v', '<leader>sa', '"hy:%s/<C-r>h/<C-r>h/gc<left><left><left>', { desc = '[S]ubstitute [A]ppend' })
@@ -170,13 +176,31 @@ vim.keymap.set('v', '<leader>n', ': norm ', { desc = '[N]ormal mode' })
 
 vim.keymap.set('n', 'yp', 'yy<cr>kp<cr>k', { desc = '[Y]ank [P]aste - Duplicate Line' })
 
+vim.keymap.set('n', '<leader>dp', ':lua print(vim.fn.getcwd())<cr>')
+
 -- vim.keymap.set('n', 'p', '"0p', { silent = true }) -- when using `p` always put last yanked text
 -- vim.keymap.set('n', 'P', '"0P', { silent = true })
 -- vim.keymap.set('n', 'dp', '"*p', { silent = true }) -- when using `dp` always put last deleted text
 -- vim.keymap.set('n', 'dP', '"*P', { silent = true })
 --
 -- vim.keymap.set('n', 'p', 'p<leader>f') -- autoformat after paste/put -- Does not work ;_;
-vim.keymap.set('n', '<C-w>n', ':tabnew<cr>', { desc = '[N]ew tab' })
+vim.keymap.set('n', '<C-w>n', ':tabnew<cr>:terminal<cr>i', { desc = '[N]ew tab' })
+vim.keymap.set('n', '<C-w>\\', function()
+  vim.cmd(math.floor(vim.fn.winwidth(0) * 0.45) .. 'vsplit')
+  vim.cmd 'terminal'
+  vim.cmd 'startinsert'
+end, { desc = 'Vertical split' })
+vim.keymap.set('n', '<C-w>-', function()
+  vim.cmd(math.floor(vim.fn.winheight(0) * 0.35) .. 'split')
+  vim.cmd 'terminal'
+  vim.cmd 'startinsert'
+end, { desc = 'Horizontal split' })
+-- vim.keymap.set('n', '<C-w>-', ':split<cr>:terminal<cr>i', { desc = 'Vertical split' })
+vim.keymap.set('t', '<esc>', '<C-\\><C-n>')
+vim.keymap.set('n', '<Left>', '<C-w>h')
+vim.keymap.set('n', '<Right>', '<C-w>l')
+vim.keymap.set('n', '<Down>', '<C-w>j')
+vim.keymap.set('n', '<Up>', '<C-w>k')
 
 vim.keymap.set({ 'v', 'n' }, '<M-h>', ':tabprevious<cr>')
 vim.keymap.set({ 'v', 'n' }, '<M-l>', ':tabNext<cr>')
@@ -185,6 +209,9 @@ vim.keymap.set({ 'v', 'n' }, '<M-l>', ':tabNext<cr>')
 vim.keymap.del('n', 'grn')
 vim.keymap.del({ 'n', 'x' }, 'gra')
 vim.keymap.del('n', 'grr')
+-- vim.keymap.set({ 'n', 'x' }, 's', '<Nop>')
+-- vim.keymap.set({ 'n', 'v' }, 's', '<nop>')
+-- vim.keymap.del('n', 'S')
 
 vim.keymap.set('n', '<leader>U', function()
   local code = vim.fn.input 'u:'
@@ -284,6 +311,38 @@ vim.api.nvim_create_autocmd('BufWinEnter', {
     if ok and pos[1] > 0 then
       -- protected mode because sometimes this will fail, for example on NON FILE BUFFERS
       pcall(vim.api.nvim_win_set_cursor, 0, pos)
+    end
+  end,
+})
+
+vim.api.nvim_command 'augroup terminal_setup | au!'
+vim.api.nvim_command 'autocmd TermOpen * nnoremap <buffer><LeftRelease> <LeftRelease>i'
+vim.api.nvim_command 'augroup end'
+
+-- Add this to your .bashrc in order to make the following autocommand to work. It enables OSC7 signaling
+-- function print_osc7() {
+--   printf "\033]7;file://$HOSTNAME/$PWD\033\\"
+-- }
+-- # PROMPT_COMMAND='$(print_osc7)${PROMPT_COMMAND:+;$PROMPT_COMMAND}'
+vim.api.nvim_create_autocmd({ 'TermRequest' }, {
+  callback = function(e)
+    -- vim.print(vim.v.termrequest)
+    if string.sub(vim.v.termrequest, 1, 4) == '\x1b]7;' then
+      local dir = string.gsub(vim.v.termrequest, '\x1b]7;file://[^/]*', '')
+      if vim.fn.isdirectory(dir) == 0 then
+        return
+      end
+      vim.api.nvim_buf_set_var(e.buf, 'last_osc7_payload', dir)
+      if vim.api.nvim_get_current_buf() == e.buf then
+        vim.cmd.cd(dir)
+      end
+    end
+  end,
+})
+vim.api.nvim_create_autocmd({ 'bufenter', 'winenter', 'dirchanged' }, {
+  callback = function(e)
+    if vim.b.last_osc7_payload ~= nil and vim.fn.isdirectory(vim.b.last_osc7_payload) == 1 then
+      vim.cmd.cd(vim.b.last_osc7_payload)
     end
   end,
 })
@@ -794,6 +853,7 @@ require('lazy').setup({
           --  This is where a variable was first declared, or where a function is defined, etc.
           --  To jump back, press <C-t>.
           map('gd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
+          map('gt', require('telescope.builtin').lsp_type_definitions, '[G]oto [T]ype definition')
 
           -- Find references for the word under your cursor.
           map('gr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
@@ -805,7 +865,7 @@ require('lazy').setup({
           -- Jump to the type of the word under your cursor.
           --  Useful when you're not sure what type a variable is and you want to see
           --  the definition of its *type*, not where it was *defined*.
-          map('<leader>D', require('telescope.builtin').lsp_type_definitions, 'Type [D]efinition')
+          -- map('<leader>D', require('telescope.builtin').lsp_type_definitions, 'Type [D]efinition')
 
           -- Fuzzy find all the symbols in your current document.
           --  Symbols are things like variables, functions, types, etc.
@@ -1209,38 +1269,9 @@ require('lazy').setup({
       do
         -- everything related to color theme goes here inside this block
         require('mini.colors').setup {}
-
-        ---@type Colorscheme
-        local theme = MiniColors.get_colorscheme 'retrobox'
-        ---@type table<string, vim.api.keyset.highlight>
-        local hl = theme.groups
-
-        -- sets several highlight, if any already existed it gets overwritten entirely
-        ---@param names string | table<string>
-        ---@param data vim.api.keyset.highlight
-        local function set_hl(names, data)
-          if type(names) == 'string' then
-            set_hl({ names }, data)
-            return
-          end
-          for _, name in pairs(names) do
-            hl[name] = data
-          end
-        end
-
-        -- tweaks an existing highlight, only adds or merges does not overwrite
-        ---@param names string | table<string>
-        ---@param data vim.api.keyset.highlight
-        local function tweak_hl(names, data)
-          if type(names) == 'string' then
-            tweak_hl({ names }, data)
-            return
-          end
-          for _, name in pairs(names) do
-            hl[name] = hl[name] or {}
-            hl[name] = vim.tbl_extend('force', hl[name], data)
-          end
-        end
+        --
+        -- ---@type Colorscheme
+        -- local theme = MiniColors.get_colorscheme 'retrobox'
 
         ---@type table<string, string>
         local dune = {
@@ -1410,6 +1441,29 @@ require('lazy').setup({
           dark_gray = '#253535',
           black = '#101010',
         }
+        local puple_insert = {
+          background = '#1f1f25',
+          base = '#846889',
+          base_toned = '#845979',
+          highlighted = '#e3a66a',
+          normal = '#b8a586',
+          disabled = '#847772',
+          attention1 = '#8EC07C',
+          attention2 = '#7e8f60',
+          important = '#f17c74',
+          important_highlighted = '#fb6c64',
+          important_darker = '#E7545E',
+          place = '#d499b9',
+          pear2 = '#a46999',
+
+          attention3 = '#E7545E',
+          attention4 = '#e63946',
+          gray = '#404040',
+          mid_gray = '#4a4a4a',
+          light_gray = '#505050',
+          dark_gray = '#253535',
+          black = '#101010',
+        }
 
         local c = puple
 
@@ -1435,182 +1489,216 @@ require('lazy').setup({
 
         -- '#487EB5' '#B8BB26' '#D3869B''#E7545E'  '#b8a586'
 
-        tweak_hl('Search', { fg = c.attention1 })
-        set_hl('Visual', { bg = c.dark_gray })
-        tweak_hl('IncSearch', { fg = c.highlighted })
-        tweak_hl('DiagnosticUnderlineError', { undercurl = true })
-        set_hl('DiagnosticUnnecessary', { fg = c.disabled })
+        local function set_theme(c, theme)
+          ---@type table<string, vim.api.keyset.highlight>
+          local hl = theme.groups
 
-        set_hl('NormalFloat', { bg = nil })
+          -- sets several highlight, if any already existed it gets overwritten entirely
+          ---@param names string | table<string>
+          ---@param data vim.api.keyset.highlight
+          local function set_hl(names, data)
+            if type(names) == 'string' then
+              set_hl({ names }, data)
+              return
+            end
+            for _, name in pairs(names) do
+              hl[name] = data
+            end
+          end
 
-        set_hl('Normal', { fg = c.normal, bg = c.background })
-        -- vim.api.nvim_create_autocmd('InsertEnter', {
-        --   desc = 'Background change on entering insert mode',
-        --   group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = false }),
-        --   callback = function()
-        --     if buf_is_trivial(0) then
-        --       return
-        --     end
-        --     set_hl('Normal', { fg = c.white, bg = '#181820' })
-        --     theme:apply()
-        --   end,
-        -- })
-        -- vim.api.nvim_create_autocmd('InsertLeave', {
-        --   desc = 'Background change when leaving insert mode',
-        --   group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = false }),
-        --   callback = function()
-        --     set_hl('Normal', { fg = c.white, bg = '#181818' })
-        --     theme:apply()
-        --   end,
-        -- })
+          -- tweaks an existing highlight, only adds or merges does not overwrite
+          ---@param names string | table<string>
+          ---@param data vim.api.keyset.highlight
+          local function tweak_hl(names, data)
+            if type(names) == 'string' then
+              tweak_hl({ names }, data)
+              return
+            end
+            for _, name in pairs(names) do
+              hl[name] = hl[name] or {}
+              hl[name] = vim.tbl_extend('force', hl[name], data)
+            end
+          end
+          tweak_hl('Search', { fg = c.attention1 })
+          set_hl('Visual', { bg = c.dark_gray })
+          tweak_hl('IncSearch', { fg = c.highlighted })
+          tweak_hl('DiagnosticUnderlineError', { undercurl = true })
+          set_hl('DiagnosticUnnecessary', { fg = c.disabled })
 
-        set_hl('SignColumn', hl.Normal)
+          set_hl('NormalFloat', { bg = nil })
 
-        set_hl({
-          'directory',
-          'statement',
-          'function',
-          '@tag',
-          '@function.builtin',
-          '@tag.builtin',
-          '@lsp.type.formatspecifier',
-        }, { fg = c.attention1 })
+          set_hl('Normal', { fg = c.normal, bg = c.background })
 
-        set_hl({
-          'delimiter',
-          'keyword',
-          'repeat',
-          'conditional',
-          'operator',
-          '@keyword.type',
-          'winseparator',
-          '@tag.delimiter',
-          '@constructor.lua',
-          'GitGraphHash',
-        }, { fg = c.base })
+          set_hl('SignColumn', hl.Normal)
 
-        set_hl({
-          'Type',
-          'Number',
-          'Float',
-          'Boolean',
-          'String',
-          'Structure',
-          'Constant',
-          'GitSignsChange',
-          'CursorLineNr',
-          '@constructor',
-          '@type.builtin',
-          'GitGraphTimestamp',
-        }, { fg = c.highlighted })
+          set_hl({
+            'directory',
+            'statement',
+            'function',
+            '@tag',
+            '@function.builtin',
+            '@tag.builtin',
+            '@lsp.type.formatspecifier',
+          }, { fg = c.attention1 })
 
-        set_hl({
-          'Typedef',
-        }, { fg = c.attention3 })
+          set_hl({
+            'delimiter',
+            'keyword',
+            'repeat',
+            'conditional',
+            'operator',
+            '@keyword.type',
+            'winseparator',
+            '@tag.delimiter',
+            '@constructor.lua',
+            'GitGraphHash',
+          }, { fg = c.base })
 
-        set_hl({
-          'Identifier',
-          '@markup.raw',
-          '@tag.attribute',
-          'markdownBlockQuote',
-          'GitGraphBranchMsg',
-        }, { fg = c.normal })
+          set_hl({
+            'Type',
+            'Number',
+            'Float',
+            'Boolean',
+            'String',
+            'Structure',
+            'Constant',
+            'GitSignsChange',
+            'CursorLineNr',
+            '@constructor',
+            '@type.builtin',
+            'GitGraphTimestamp',
+          }, { fg = c.highlighted })
 
-        set_hl({
-          'Include',
-          'Label',
-          'Title',
-          'GitSignsAdd',
-          'LeapLabelPrimary',
-          '@lsp.type.namespace',
-          '@module',
-          'GitGraphAuthor',
-        }, { fg = c.place })
+          set_hl({
+            'Typedef',
+          }, { fg = c.attention3 })
 
-        set_hl({
-          'LeapLabelPrimary',
-        }, { fg = c.black, bg = c.normal })
+          set_hl({
+            'Identifier',
+            '@markup.raw',
+            '@tag.attribute',
+            'markdownBlockQuote',
+            'GitGraphBranchMsg',
+          }, { fg = c.normal })
 
-        -- TODO: example todo
-        -- NOTE: example note
-        -- FIXME: example fixme
-        set_hl({
-          'TodoBgTODO',
-          'TodoBgNOTE',
-        }, { fg = c.gray, bg = c.place })
+          set_hl({
+            'Include',
+            'Label',
+            'Title',
+            'GitSignsAdd',
+            'LeapLabelPrimary',
+            '@lsp.type.namespace',
+            '@module',
+            'GitGraphAuthor',
+          }, { fg = c.place })
 
-        set_hl({
-          'TodoFgFIX',
-        }, { fg = c.important_darker })
+          set_hl({
+            'LeapLabelPrimary',
+          }, { fg = c.black, bg = c.normal })
 
-        set_hl({
-          'SpecialChar',
-          'GitSignsDelete',
-          '@constant.builtin',
-          '@lsp.type.lifetime',
-          '@lsp.typemod.keyword.async',
-          'Macro',
-        }, { fg = c.important })
+          -- TODO: example todo
+          -- NOTE: example note
+          -- FIXME: example fixme
+          set_hl({
+            'TodoBgTODO',
+            'TodoBgNOTE',
+          }, { fg = c.gray, bg = c.place })
 
-        set_hl({
-          'Comment',
-          'LeapBackdrop',
-        }, { fg = c.light_gray })
+          set_hl({
+            'TodoFgFIX',
+          }, { fg = c.important_darker })
 
-        set_hl({
-          'TodoBgFIX',
-          'TodoBgFIXME',
-        }, { fg = c.gray, bg = c.important_darker })
+          set_hl({
+            'SpecialChar',
+            'GitSignsDelete',
+            '@constant.builtin',
+            '@lsp.type.lifetime',
+            '@lsp.typemod.keyword.async',
+            'Macro',
+          }, { fg = c.important })
 
-        set_hl('Special', { fg = c.base_toned })
+          set_hl({
+            'Comment',
+            'LeapBackdrop',
+          }, { fg = c.light_gray })
 
-        set_hl('flogBranch0', { fg = '#458588' })
-        set_hl('flogBranch1', { fg = '#458588' })
-        set_hl('flogBranch2', { fg = '#689d6a' })
-        set_hl('flogBranch3', { fg = '#b16286' })
-        set_hl('flogBranch4', { fg = '#d79921' })
-        set_hl('flogBranch5', { fg = '#98971a' })
-        set_hl('flogBranch6', { fg = '#E7545E' })
-        set_hl('flogBranch7', { fg = '#ad6639' })
-        set_hl('flogBranch8', { fg = '#b53a35' })
-        set_hl('flogBranch9', { fg = '#d5651c' })
+          set_hl({
+            'TodoBgFIX',
+            'TodoBgFIXME',
+          }, { fg = c.gray, bg = c.important_darker })
 
-        set_hl({
-          'DiffAdd',
-          'DiffChange',
-        }, { bg = '#003530' })
+          set_hl('Special', { fg = c.base_toned })
 
-        set_hl('DiffText', { bg = '#004040' })
-        set_hl('DiffDelete', { fg = '#F00000' })
-        set_hl('DiffviewDiffDeleteDim', { fg = '#F00000' })
+          set_hl('flogBranch0', { fg = '#458588' })
+          set_hl('flogBranch1', { fg = '#458588' })
+          set_hl('flogBranch2', { fg = '#689d6a' })
+          set_hl('flogBranch3', { fg = '#b16286' })
+          set_hl('flogBranch4', { fg = '#d79921' })
+          set_hl('flogBranch5', { fg = '#98971a' })
+          set_hl('flogBranch6', { fg = '#E7545E' })
+          set_hl('flogBranch7', { fg = '#ad6639' })
+          set_hl('flogBranch8', { fg = '#b53a35' })
+          set_hl('flogBranch9', { fg = '#d5651c' })
 
-        set_hl({
-          'MiniStatuslineBranch',
-          'MiniStatuslineWorkspace',
-          'MiniStatuslineWorkspaceUnsaved',
-          'MiniStatuslineChanges',
-          'MiniStatuslineDiagnostics',
-          'MiniStatuslineFileinfo',
-        }, { bg = hl.StatusLineNC.fg })
+          set_hl({
+            'DiffAdd',
+            'DiffChange',
+          }, { bg = '#003530' })
 
-        tweak_hl('MiniStatuslineBranch', { fg = c.place })
-        tweak_hl('MiniStatuslineWorkspaceUnsaved', { fg = c.important_darker })
-        tweak_hl('MiniStatuslineChanges', { fg = c.highlighted })
-        tweak_hl('MiniStatuslineDiagnostics', { fg = c.attention1 })
-        tweak_hl('MiniStatuslineFileinfo', { fg = c.attention1 })
+          set_hl('DiffText', { bg = '#004040' })
+          set_hl('DiffDelete', { fg = '#F00000' })
+          set_hl('DiffviewDiffDeleteDim', { fg = '#F00000' })
 
-        set_hl({
-          'MiniStatuslineModeNormal',
-          'MiniStatuslineModeVisual',
-          'MiniStatuslineModeInsert',
-        }, { fg = hl.StatusLineNC.fg })
+          set_hl({
+            'MiniStatuslineBranch',
+            'MiniStatuslineWorkspace',
+            'MiniStatuslineWorkspaceUnsaved',
+            'MiniStatuslineChanges',
+            'MiniStatuslineDiagnostics',
+            'MiniStatuslineFileinfo',
+          }, { bg = hl.StatusLineNC.fg })
 
-        tweak_hl('MiniStatuslineModeNormal', { bg = c.highlighted })
-        tweak_hl('MiniStatuslineModeVisual', { bg = c.important })
-        tweak_hl('MiniStatuslineModeInsert', { bg = c.attention1 })
+          tweak_hl('MiniStatuslineBranch', { fg = c.place })
+          tweak_hl('MiniStatuslineWorkspaceUnsaved', { fg = c.important_darker })
+          tweak_hl('MiniStatuslineChanges', { fg = c.highlighted })
+          tweak_hl('MiniStatuslineDiagnostics', { fg = c.attention1 })
+          tweak_hl('MiniStatuslineFileinfo', { fg = c.attention1 })
 
-        ---@diagnostic disable-next-line: undefined-field
-        theme:apply()
+          set_hl({
+            'MiniStatuslineModeNormal',
+            'MiniStatuslineModeVisual',
+            'MiniStatuslineModeInsert',
+          }, { fg = hl.StatusLineNC.fg })
+
+          tweak_hl('MiniStatuslineModeNormal', { bg = c.highlighted })
+          tweak_hl('MiniStatuslineModeVisual', { bg = c.important })
+          tweak_hl('MiniStatuslineModeInsert', { bg = c.attention1 })
+
+          ---@diagnostic disable-next-line: undefined-field
+          theme:apply()
+        end
+
+        vim.api.nvim_create_autocmd('InsertEnter', {
+          desc = 'Background change on entering insert mode',
+          group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = false }),
+          callback = function()
+            if buf_is_trivial(0) then
+              return
+            end
+            -- set_hl('Normal', { fg = c.white, bg = '#303235' })
+            set_theme(puple_insert, MiniColors.get_colorscheme())
+          end,
+        })
+        vim.api.nvim_create_autocmd('InsertLeave', {
+          desc = 'Background change when leaving insert mode',
+          group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = false }),
+          callback = function()
+            -- set_hl('Normal', { fg = c.white, bg = c.background })
+            set_theme(puple, MiniColors.get_colorscheme())
+          end,
+        })
+
+        set_theme(puple, MiniColors.get_colorscheme 'retrobox')
       end
       -- Better Around/Inside textobjects
       --
@@ -1703,6 +1791,7 @@ require('lazy').setup({
                 { hl = 'MiniStatuslineDiagnostics', strings = { diagnostics, lsp } },
                 '%<', -- Mark general truncate point
                 { hl = filenam_hl, strings = { filename } },
+                { hl = filenam_hl, strings = { vim.fn['zoom#statusline']() } },
                 '%=', -- End left alignment
                 { hl = 'MiniStatuslineFileinfo', strings = { fileinfo } },
                 { hl = mode_hl, strings = { search, location } },
@@ -1796,7 +1885,7 @@ require('lazy').setup({
     init = function()
       require('toggleterm').setup {
         -- size can be a number or function which is passed the current terminal
-        open_mapping = [[<F12>]], -- or { [[<c-\>]], [[<c-¥>]] } if you also use a Japanese keyboard.
+        -- open_mapping = [[<F12>]], -- or { [[<c-\>]], [[<c-¥>]] } if you also use a Japanese keyboard.
         start_in_insert = true,
         direction = 'vertical',
         size = 100,
@@ -1825,7 +1914,7 @@ require('lazy').setup({
       require('auto-session').setup {
         log_level = 'error',
         auto_session_suppress_dirs = {
-          '~/',
+          -- '~/',
           '~/.config/nvim/*',
           '~/.config/nvim',
           '~/.config',
@@ -1892,6 +1981,63 @@ require('lazy').setup({
       },
     },
   },
+  {
+    'chrisgrieser/nvim-various-textobjs',
+    event = 'uienter',
+    opts = { usedefaultkeymaps = true },
+  },
+  {
+    'stevearc/oil.nvim',
+    ---@module 'oil'
+    ---@type oil.SetupOpts
+    opts = {},
+    config = function()
+      require('oil').setup {
+        columns = {
+          'icon',
+          -- 'permissions',
+          -- 'size',
+          -- 'mtime',
+        },
+      }
+      vim.keymap.set('n', '<leader>o', '<cmd>Oil .<CR>')
+    end,
+    -- keymaps = {
+    --   ['<leader>\\'] = '<cmd>Oil<CR>',
+    -- },
+    -- Optional dependencies
+    dependencies = { { 'echasnovski/mini.icons', opts = {} } },
+    -- dependencies = { "nvim-tree/nvim-web-devicons" }, -- use if prefer nvim-web-devicons
+  },
+  {
+    'gabrielpoca/replacer.nvim',
+    init = function()
+      -- vim.api.nvim_create_autocmd('BufWinEnter', {
+      --   desc = 'Start off where you left off',
+      --   group = vim.api.nvim_create_augroup('replacer', { clear = true }),
+      --   -- NOTE: this is just the command '"  in lua [[ and ]] are similar to ``` in other languages
+      --   callback = function()
+      --     -- require('replacer').run { silent = true }
+      --     vim.cmd ':lua require("replacer").run()<cr>'
+      --   end,
+      -- })
+      vim.keymap.set('n', '<leader>h', ':lua require("replacer").run()<cr>', { silent = true })
+    end,
+  },
+  'jeetsukumaran/vim-indentwise',
+  {
+    'dhruvasagar/vim-zoom',
+    init = function()
+      -- vim.keymap.del('n', '<C-w>m')
+      vim.keymap.set('n', '<Down><Up>', '<Plug>(zoom-toggle)', { silent = true })
+    end,
+  },
+  -- {
+  --   'kabbamine/vzoom.vim',
+  --   init = function()
+  --     vim.keymap.set('n', '<Down><Up>', '<Plug>(vzoom)')
+  --   end,
+  -- },
   -- {
   --   'chentoast/live.nvim',
   --   init = function()
@@ -1921,7 +2067,7 @@ require('lazy').setup({
   require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
   require 'kickstart.plugins.autopairs',
-  require 'kickstart.plugins.neo-tree',
+  -- require 'kickstart.plugins.neo-tree',
   -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
 
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
