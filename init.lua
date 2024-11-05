@@ -39,6 +39,7 @@ vim.opt.scrolloff = 16 -- Minimal number of screen lines to keep above and below
 vim.opt.hlsearch = true -- Set highlight on search, but clear on pressing <Esc> in normal mode
 vim.opt.numberwidth = 3
 vim.opt.autoread = true
+vim.opt.laststatus = 3 -- better looking horizontal window split borders
 -- vim.o.autochdir = true
 
 vim.opt.tabstop = 4
@@ -104,39 +105,39 @@ end, { desc = 'Test your colors' })
 --========================= ESC BINDINGS ==================
 --=========================================================
 vim.keymap.set('n', '<Esc>', ':nohlsearch<CR>', { silent = true })
-vim.keymap.set('n', '<Esc><Esc>', function()
-  local ntabs = #vim.api.nvim_list_tabpages()
-  if ntabs <= 1 then
-    return
-  end
-
-  -- NOTE: we avoid closing tab if current window is relative
-  local not_relative = vim.api.nvim_win_get_config(0).relative == ''
-  if not_relative then
-    vim.cmd [[:tabc]]
-  end
-end, {
-  desc = 'Close current tab',
-})
+-- vim.keymap.set('n', '<Esc><Esc>', function()
+--   local ntabs = #vim.api.nvim_list_tabpages()
+--   if ntabs <= 1 then
+--     return
+--   end
+--
+--   -- NOTE: we avoid closing tab if current window is relative
+--   local not_relative = vim.api.nvim_win_get_config(0).relative == ''
+--   if not_relative then
+--     vim.cmd [[:tabc]]
+--   end
+-- end, {
+--   desc = 'Close current tab',
+-- })
 
 -- takes buffer number and removes the ESC ESC local keybinding
 --- @param buf integer
-local function cancel_esc_esc_once_buf(buf)
-  pcall(vim.keymap.del, 'n', '<Esc><Esc>', { buffer = buf })
-end
+-- local function cancel_esc_esc_once_buf(buf)
+--   pcall(vim.keymap.del, 'n', '<Esc><Esc>', { buffer = buf })
+-- end
 
 -- any parent tab page, useful for handy closeing of plugins that
 -- spawn their own tabpages
 --- @param buf integer
-local function esc_esc_once_buf(buf)
-  vim.keymap.set('n', '<Esc><Esc>', function()
-    vim.cmd ':tabc'
-    cancel_esc_esc_once_buf(buf)
-  end, { buffer = buf })
-  -- NOTE: we also need to register an autocommand that will clear the above keymap
-  --       if the buffer is leaving the window it was in
-  --       :
-end
+-- local function esc_esc_once_buf(buf)
+--   vim.keymap.set('n', '<Esc><Esc>', function()
+--     vim.cmd ':tabc'
+--     cancel_esc_esc_once_buf(buf)
+--   end, { buffer = buf })
+--   -- NOTE: we also need to register an autocommand that will clear the above keymap
+--   --       if the buffer is leaving the window it was in
+--   --       :
+-- end
 
 -- returns true if buffer is trivial
 --- @param buf integer -- 0 is current buffer
@@ -167,14 +168,16 @@ vim.cmd 'autocmd InsertEnter * setlocal formatoptions+=cro'
 
 vim.keymap.set('v', '<leader>sc', '"hy:%s/<C-r>h//gc<left><left><left>', { desc = '[S]ubstitute [C]hange' })
 vim.keymap.set('v', '<leader>sa', '"hy:%s/<C-r>h/<C-r>h/gc<left><left><left>', { desc = '[S]ubstitute [A]ppend' })
+vim.keymap.set('v', '<leader>ss', ':s/\\%V', { desc = '[S]ub[s]titute' })
 
+-- vim.keymap.set('n', '*', '/<C-R><C-W><cr>N', { desc = 'highlight all occurrences of current word' })
 -- vim.keymap.set('n', '<C-q>', '<C-v>')
 
 vim.keymap.set('i', '<C-H>', '<C-W>')
 
 vim.keymap.set('v', '<leader>n', ': norm ', { desc = '[N]ormal mode' })
 
-vim.keymap.set('n', 'yp', 'yy<cr>kp<cr>k', { desc = '[Y]ank [P]aste - Duplicate Line' })
+-- vim.keymap.set('n', 'yp', 'yy<cr>kp<cr>k', { desc = '[Y]ank [P]aste - Duplicate Line' })
 
 vim.keymap.set('n', '<leader>dp', ':lua print(vim.fn.getcwd())<cr>')
 
@@ -188,12 +191,12 @@ vim.keymap.set('n', '<C-w>n', ':tabnew<cr>:terminal<cr>i', { desc = '[N]ew tab' 
 vim.keymap.set('n', '<C-w>\\', function()
   vim.cmd(math.floor(vim.fn.winwidth(0) * 0.45) .. 'vsplit')
   vim.cmd 'terminal'
-  vim.cmd 'startinsert'
+  -- vim.cmd 'startinsert'
 end, { desc = 'Vertical split' })
 vim.keymap.set('n', '<C-w>-', function()
   vim.cmd(math.floor(vim.fn.winheight(0) * 0.35) .. 'split')
   vim.cmd 'terminal'
-  vim.cmd 'startinsert'
+  -- vim.cmd 'startinsert'
 end, { desc = 'Horizontal split' })
 -- vim.keymap.set('n', '<C-w>-', ':split<cr>:terminal<cr>i', { desc = 'Vertical split' })
 vim.keymap.set('t', '<esc>', '<C-\\><C-n>')
@@ -202,8 +205,12 @@ vim.keymap.set('n', '<Right>', '<C-w>l')
 vim.keymap.set('n', '<Down>', '<C-w>j')
 vim.keymap.set('n', '<Up>', '<C-w>k')
 
-vim.keymap.set({ 'v', 'n' }, '<M-h>', ':tabprevious<cr>')
-vim.keymap.set({ 'v', 'n' }, '<M-l>', ':tabNext<cr>')
+-- vim.keymap.set({ 'v', 'n' }, '<M-h>', ':tabprevious<cr>')
+vim.keymap.set({ 'v', 'n' }, '<M-y>', '<C-w>3-')
+vim.keymap.set({ 'v', 'n' }, '€', '<C-w>3<')
+vim.keymap.set({ 'v', 'n' }, '<M-i>', '<C-w>3>')
+vim.keymap.set({ 'v', 'n' }, 'ó', '<C-w>3+')
+-- vim.keymap.set({ 'v', 'n' }, '<M-l>', ':tabNext<cr>')
 
 -- unbind default grn gra grr
 vim.keymap.del('n', 'grn')
@@ -225,7 +232,7 @@ end, { desc = 'insert unicode' })
 -- vim.keymap.set('n', '<M-j>', '12j')
 -- vim.keymap.set('n', '<M-k>', '12k')
 do
-  local dt = 10
+  local dt = 8
   local n = 20
 
   --- @param dir 'j' | 'k'
@@ -272,15 +279,15 @@ vim.keymap.set('n', '<leader>qf', function()
   -- end
 end)
 
-function _G.set_terminal_keymaps()
-  local opts = { buffer = 0 }
-  vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
-  -- vim.keymap.set('t', '<esc>', [[<C-\><C-n>]], opts)
-  vim.keymap.set('t', 'jk', [[<C-\><C-n>]], opts)
-end
+-- function _G.set_terminal_keymaps()
+--   local opts = { buffer = 0 }
+--   vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
+--   -- vim.keymap.set('t', '<esc>', [[<C-\><C-n>]], opts)
+--   -- vim.keymap.set('t', 'jk', [[<C-\><C-n>]], opts)
+-- end
 
 -- if you only want these mappings for toggle term use term://*toggleterm#* instead
-vim.cmd 'autocmd! TermOpen term://* lua set_terminal_keymaps()'
+-- vim.cmd 'autocmd! TermOpen term://* lua set_terminal_keymaps()'
 
 -- NOTE: swap lines like in vscode
 --
@@ -291,11 +298,11 @@ vim.cmd 'autocmd! TermOpen term://* lua set_terminal_keymaps()'
 vim.keymap.set('n', '<C-k>', ':m-2<cr>', { desc = 'swap line with line above' }) -- vscode <alt> + <down>
 vim.keymap.set('n', '<C-j>', ':m+1<cr>', { desc = 'swap line with line below' }) -- vscode <alt> + <up>
 
--- NOTE: Jump between tabs using 'Alt + number'
-for i = 1, 9 do
-  vim.keymap.set('n', '<M-' .. i .. '>', i .. 'gt', { desc = '[T]ab ' .. i })
-end
-
+-- -- NOTE: Jump between tabs using 'Alt + number'
+-- for i = 1, 9 do
+--   vim.keymap.set('n', '<M-' .. i .. '>', i .. 'gt', { desc = '[T]ab ' .. i })
+-- end
+--
 -- useful for figuring out what higlight groups are relevant for stuff under cursor
 vim.keymap.set('n', '<leader>I', function()
   vim.show_pos()
@@ -316,9 +323,14 @@ vim.api.nvim_create_autocmd('BufWinEnter', {
 })
 
 vim.api.nvim_command 'augroup terminal_setup | au!'
-vim.api.nvim_command 'autocmd TermOpen * nnoremap <buffer><LeftRelease> <LeftRelease>i'
+-- vim.api.nvim_command 'autocmd TermOpen * nnoremap <buffer><LeftRelease> <LeftRelease>i'
 vim.api.nvim_command 'augroup end'
 
+vim.api.nvim_create_autocmd({ 'TermEnter', 'TermLeave' }, {
+  callback = function()
+    vim.cmd 'Fidget suppress'
+  end,
+})
 -- Add this to your .bashrc in order to make the following autocommand to work. It enables OSC7 signaling
 -- function print_osc7() {
 --   printf "\033]7;file://$HOSTNAME/$PWD\033\\"
@@ -337,6 +349,32 @@ vim.api.nvim_create_autocmd({ 'TermRequest' }, {
         vim.cmd.cd(dir)
       end
     end
+
+    local buf_number = vim.api.nvim_get_current_buf()
+    local cursor_pos = vim.api.nvim_win_get_cursor(0) -- Get cursor position in the current window
+    local last_cmd = ''
+    local line_number = cursor_pos[1]
+    local lines = vim.api.nvim_buf_get_lines(buf_number, line_number - math.max(1, math.min(120, line_number)), line_number, false)
+    -- vim.print('line num:' .. line_number)
+    -- vim.print('lookback: ', line_number - line_number <= 5 and 2 or 5)
+    -- vim.print('lines num:' .. #lines)
+    for i = #lines, 1, -1 do
+      if lines[i]:match '%$%s*(.*)' then -- Check for a non-empty line
+        last_cmd = lines[i]:match '%$%s*(.*)' or ''
+        break
+      end
+      -- vim.notify 'asda'
+    end
+
+    -- last_cmd = 'dupa'
+
+    -- local last_cmd = vim.api.nvim_buf_get_lines(buf_number, line_number - 1, line_number, false):match '%$%s*(.*)' or ''
+    -- vim.print('last cmd: ' .. last_cmd)
+    if last_cmd ~= '' then
+      -- vim.cmd('file term://' .. buf_number .. '//' .. last_cmd)
+    end
+    -- vim.print('Last lines' .. vim.api.nvim_buf_get_lines(buf_number, line_number - 1, line_number, false)[1])
+    --   vim.notify(vim.inspect(vim.b), true)
   end,
 })
 vim.api.nvim_create_autocmd({ 'bufenter', 'winenter', 'dirchanged' }, {
@@ -347,6 +385,12 @@ vim.api.nvim_create_autocmd({ 'bufenter', 'winenter', 'dirchanged' }, {
   end,
 })
 
+-- vim.keymap.set('n', '<leader>z', function()
+--   local buf_number = vim.api.nvim_get_current_buf()
+--   local cursor_pos = vim.api.nvim_win_get_cursor(0) -- Get cursor position in the current window
+--   local line_number = cursor_pos[1]
+--   vim.print('Last lines' .. vim.api.nvim_buf_get_lines(buf_number, line_number - 1, line_number, false)[1])
+-- end)
 -- [[ Basic Autocommands ]]
 --  See `:help lua-guide-autocommands`
 
@@ -576,7 +620,6 @@ require('lazy').setup({
       'nvim-lua/plenary.nvim',
       { -- If encountering errors, see telescope-fzf-native README for installation instructions
         'nvim-telescope/telescope-fzf-native.nvim',
-
         -- `build` is used to run some command when the plugin is installed/updated.
         -- This is only run then, not every time Neovim starts up.
         build = 'make',
@@ -589,6 +632,7 @@ require('lazy').setup({
       },
       { 'nvim-telescope/telescope-ui-select.nvim' },
 
+      'nvim-telescope/telescope-symbols.nvim',
       -- Useful for getting pretty icons, but requires a Nerd Font.
       { 'nvim-tree/nvim-web-devicons', enabled = vim.g.have_nerd_font },
     },
@@ -619,16 +663,20 @@ require('lazy').setup({
         --  All the info you're looking for is in `:help telescope.setup()`
         --
         defaults = {
+          layout_config = {
+            width = 0.9,
+            height = 0.9,
+          },
           mappings = {
             i = {
               ['<c-enter>'] = 'to_fuzzy_refine',
               ['<Esc>'] = require('telescope.actions').close,
-              ['<Right>'] = require('telescope.actions').select_default,
+              -- ['<Right>'] = require('telescope.actions').select_default,
               ['<c-d>'] = require('telescope.actions').delete_buffer,
             },
             n = {
               ['<Esc>'] = require('telescope.actions').close,
-              ['<Right>'] = require('telescope.actions').select_default,
+              -- ['<Right>'] = require('telescope.actions').select_default,
               ['<c-d>'] = require('telescope.actions').delete_buffer,
             },
           },
@@ -649,11 +697,20 @@ require('lazy').setup({
       local builtin = require 'telescope.builtin'
       vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
       vim.keymap.set('n', '<leader>sk', builtin.keymaps, { desc = '[S]earch [K]eymaps' })
-      vim.keymap.set('n', '<leader>sf', builtin.find_files, { desc = '[S]earch [F]iles' })
+      vim.keymap.set('n', '<leader>sf', function()
+        builtin.find_files { find_command = { 'rg', '--files', '--hidden', '-g', '!.git' } } --hidden = true
+      end, { desc = '[S]earch [F]iles' })
       vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
-      vim.keymap.set('n', '<leader>sw', builtin.grep_string, { desc = '[S]earch current [W]ord' })
+      -- vim.keymap.set('n', '<leader>sw', builtin.grep_string, { desc = '[S]earch current [W]ord' })
       vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = '[S]earch by [G]rep' })
-      vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
+      vim.keymap.set('n', '<leader>sc', builtin.git_status, { desc = '[S]earch git [C]changes' })
+      vim.keymap.set('n', '<leader>sdd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
+      vim.keymap.set('n', '<leader>sde', function()
+        builtin.diagnostics { severity = vim.diagnostic.severity.ERROR }
+      end, { desc = '[S]earch [D]iagnostics [E]rror' })
+      vim.keymap.set('n', '<leader>sdw', function()
+        builtin.diagnostics { severity = vim.diagnostic.severity.WARN }
+      end, { desc = '[S]earch [D]iagnostics [W]arning' })
       vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
       vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
       vim.keymap.set('n', '<leader>sl', builtin.highlights, { desc = '[S]earch High[L]ights' })
@@ -683,7 +740,6 @@ require('lazy').setup({
       end, { desc = '[S]earch [N]eovim files' })
     end,
   },
-
   {
     'lewis6991/gitsigns.nvim',
     opts = {
@@ -714,7 +770,6 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>dt', ':Gitsigns diffthis<cr>', { desc = 'See changes in the current buffer' })
     end,
   },
-
   {
     'sindrets/diffview.nvim',
     dependencies = {
@@ -726,17 +781,17 @@ require('lazy').setup({
         view_leave = function()
           local buf = vim.api.nvim_get_current_buf()
           -- print('leaving view: buf =', buf)
-          cancel_esc_esc_once_buf(buf)
+          -- cancel_esc_esc_once_buf(buf)
         end,
         view_enter = function()
           local buf = vim.api.nvim_get_current_buf()
           -- print('entering view: buf =', buf)
-          esc_esc_once_buf(buf)
+          -- esc_esc_once_buf(buf)
         end,
         diff_buf_read = function(buf)
           -- print('diffview read buf: ', buf)
           vim.opt_local.cursorline = false
-          esc_esc_once_buf(buf)
+          -- esc_esc_once_buf(buf)
         end,
         view_opened = function()
           -- print 'opening view'
@@ -807,7 +862,6 @@ require('lazy').setup({
       )
     end,
   },
-
   { -- LSP Configuration & Plugins
     'neovim/nvim-lspconfig',
     dependencies = {
@@ -873,7 +927,7 @@ require('lazy').setup({
 
           -- Fuzzy find all the symbols in your current workspace.
           --  Similar to document symbols, except searches over your entire project.
-          map('<leader>ws', require('telescope.builtin').lsp_dynamic_workspace_symbols, '[W]orkspace [S]ymbols')
+          map('<leader>sw', require('telescope.builtin').lsp_dynamic_workspace_symbols, '[S]earch [W]orkspace Symbols')
 
           -- -- Rename the variable under your cursor.
           -- --  Most Language Servers support renaming across files, etc.
@@ -921,7 +975,8 @@ require('lazy').setup({
 
           -- Execute a code action, usually your cursor needs to be on top of an error
           -- or a suggestion from your LSP for this to activate.
-          map('<leader>ca', vim.lsp.buf.code_action, '[C]ode [A]ction')
+          -- map('<leader>ca', vim.lsp.buf.code_action, '[C]ode [A]ction')
+          vim.keymap.set({ 'n', 'v' }, '<leader>ca', vim.lsp.buf.code_action, { buffer = event.buf, desc = 'LSP: [C]ode [A]ction' })
           vim.keymap.set('i', '<C-x>', vim.lsp.buf.code_action, { buffer = event.buf, desc = 'LSP: Code Action' })
 
           -- Opens a popup that displays documentation about the word under your cursor
@@ -1014,7 +1069,7 @@ require('lazy').setup({
         --    https://github.com/pmizio/typescript-tools.nvim
         --
         -- But for many setups, the LSP (`tsserver`) will work just fine
-        tsserver = {},
+        ts_ls = {},
         --
         rust_analyzer = {
           settings = {
@@ -1082,6 +1137,9 @@ require('lazy').setup({
       require('mason-lspconfig').setup {
         handlers = {
           function(server_name)
+            if server_name == 'tsserver' then
+              server_name = 'ts_ls'
+            end
             local server = servers[server_name] or {}
             -- This handles overriding only values explicitly passed
             -- by the server configuration above. Useful when disabling
@@ -1124,6 +1182,9 @@ require('lazy').setup({
         python = { 'isort', 'black' },
         json = { 'jq' },
         --
+        xml = { 'xmllint' }, -- dont bother trying to use something from Mason ... install this debian package instead
+        svg = { 'xmllint' }, -- dont bother trying to use something from Mason ... install this debian package instead
+
         -- You can use a sub-list to tell conform to run *until* a formatter
         -- is found.
         -- TODO: actually configure to use prettier for javascript + typescript
@@ -1134,7 +1195,6 @@ require('lazy').setup({
       },
     },
   },
-
   { -- Autocompletion
     'hrsh7th/nvim-cmp',
     event = 'InsertEnter',
@@ -1251,13 +1311,24 @@ require('lazy').setup({
           end, { 'i', 's' }),
 
           -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
-          --    https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps
+          --    https://github.com/l3mon4d3/luasnip?tab=readme-ov-file#keymaps
         },
         sources = {
           { name = 'nvim_lsp' },
           { name = 'luasnip' },
           { name = 'path' },
         },
+        -- sorting = {
+        --   comparators = {
+        --     cmp.config.compare.offset,
+        --     cmp.config.compare.exact,
+        --     cmp.config.compare.score,
+        --     cmp.config.compare.kind,
+        --     -- cmp.config.compare.sort_text,
+        --     cmp.config.compare.length,
+        --     cmp.config.compare.order,
+        --   },
+        -- },
       }
     end,
   },
@@ -1442,7 +1513,7 @@ require('lazy').setup({
           black = '#101010',
         }
         local puple_insert = {
-          background = '#1f1f25',
+          background = '#1f1f1f',
           base = '#846889',
           base_toned = '#845979',
           highlighted = '#e3a66a',
@@ -1656,7 +1727,7 @@ require('lazy').setup({
             'MiniStatuslineChanges',
             'MiniStatuslineDiagnostics',
             'MiniStatuslineFileinfo',
-          }, { bg = hl.StatusLineNC.fg })
+          }, { bg = '#333333' })
 
           tweak_hl('MiniStatuslineBranch', { fg = c.place })
           tweak_hl('MiniStatuslineWorkspaceUnsaved', { fg = c.important_darker })
@@ -1668,7 +1739,7 @@ require('lazy').setup({
             'MiniStatuslineModeNormal',
             'MiniStatuslineModeVisual',
             'MiniStatuslineModeInsert',
-          }, { fg = hl.StatusLineNC.fg })
+          }, { fg = '#333333' })
 
           tweak_hl('MiniStatuslineModeNormal', { bg = c.highlighted })
           tweak_hl('MiniStatuslineModeVisual', { bg = c.important })
@@ -1678,7 +1749,26 @@ require('lazy').setup({
           theme:apply()
         end
 
-        vim.api.nvim_create_autocmd('InsertEnter', {
+        -- vim.api.nvim_create_autocmd('CmdlineEnter', {
+        --   desc = 'Background change on entering insert mode',
+        --   group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = false }),
+        --   callback = function()
+        --     if buf_is_trivial(0) then
+        --       return
+        --     end
+        --     -- set_hl('Normal', { fg = c.white, bg = '#303235' })
+        --     set_theme(puple_term, MiniColors.get_colorscheme())
+        --   end,
+        -- })
+        -- vim.api.nvim_create_autocmd('CmdlineLeave', {
+        --   desc = 'Background change when leaving insert mode',
+        --   group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = false }),
+        --   callback = function()
+        --     -- set_hl('Normal', { fg = c.white, bg = c.background })
+        --     set_theme(puple, MiniColors.get_colorscheme())
+        --   end,
+        -- })
+        vim.api.nvim_create_autocmd({ 'InsertEnter', 'TermEnter' }, {
           desc = 'Background change on entering insert mode',
           group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = false }),
           callback = function()
@@ -1689,7 +1779,7 @@ require('lazy').setup({
             set_theme(puple_insert, MiniColors.get_colorscheme())
           end,
         })
-        vim.api.nvim_create_autocmd('InsertLeave', {
+        vim.api.nvim_create_autocmd({ 'InsertLeave', 'TermLeave' }, {
           desc = 'Background change when leaving insert mode',
           group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = false }),
           callback = function()
@@ -1736,6 +1826,7 @@ require('lazy').setup({
               local diff = MiniStatusline.section_diff { icon = 'Δ', trunc_width = 75 }
               local diagnostics = MiniStatusline.section_diagnostics { trunc_width = 75 }
               local lsp = MiniStatusline.section_lsp { trunc_width = 75 }
+              local venv = (os.getenv 'VIRTUAL_ENV' or ''):match '([^/\\]+)$' or ''
 
               -- local filename = MiniStatusline.section_filename { trunc_width = 140 }
               local filename = vim.fn.expand '%f'
@@ -1786,6 +1877,8 @@ require('lazy').setup({
               return MiniStatusline.combine_groups {
                 { hl = mode_hl, strings = { mode } },
                 { hl = 'MiniStatuslineBranch', strings = { git } },
+                { hl = 'CurrentVenv', strings = { venv } },
+
                 { hl = workspace_hl, strings = { vim.fs.basename(root_dir) } },
                 { hl = 'MiniStatuslineChanges', strings = { diff } },
                 { hl = 'MiniStatuslineDiagnostics', strings = { diagnostics, lsp } },
@@ -1879,53 +1972,10 @@ require('lazy').setup({
       end, { silent = true, desc = 'jump to line of parent context' })
     end,
   },
-  {
-    'akinsho/toggleterm.nvim',
-    version = '*',
-    init = function()
-      require('toggleterm').setup {
-        -- size can be a number or function which is passed the current terminal
-        -- open_mapping = [[<F12>]], -- or { [[<c-\>]], [[<c-¥>]] } if you also use a Japanese keyboard.
-        start_in_insert = true,
-        direction = 'vertical',
-        size = 100,
-      }
-    end,
-  },
-  {
-    'ggandor/leap.nvim',
-    opts = {},
-    config = function()
-      local leap = require 'leap'
-      leap.opts.labels = 'sfnjklhodweimbuyvrgtaqpcxzSFNJKLHODWEIMBUYVRGTAQPCXZ'
-      leap.opts.safe_labels = ''
-      leap.opts.highlight_unlabeled_phase_one_targets = true
-
-      vim.keymap.set({ 'n', 'x', 'o' }, '<leader>;', '<Plug>(leap)', { desc = '[F]ind Leap' })
-    end,
-  },
   -- {
   --   'OXY2DEV/markview.nvim',
   --   opts = {},
   -- },
-  {
-    'rmagatti/auto-session', -- auto save session
-    config = function()
-      require('auto-session').setup {
-        log_level = 'error',
-        auto_session_suppress_dirs = {
-          -- '~/',
-          '~/.config/nvim/*',
-          '~/.config/nvim',
-          '~/.config',
-          '~/Downloads',
-          '~/Documents',
-        },
-        auto_session_use_git_branch = true,
-        auto_save_enabled = true,
-      }
-    end,
-  },
   {
     'michaelb/sniprun',
     build = 'bash ./install.sh',
@@ -1939,12 +1989,6 @@ require('lazy').setup({
       }
       vim.keymap.set({ 'n', 'v' }, '<leader>r', ':SnipRun<CR>', { desc = 'run curr line with sniprun' })
       -- vim.keymap.set('v', '<leader>r', ":'<,'>SnipRun<CR>", { desc = 'run curr selection with sniprun' })
-    end,
-  },
-  {
-    'ggandor/leap-spooky.nvim',
-    init = function()
-      require('leap-spooky').setup()
     end,
   },
   {
@@ -2032,12 +2076,27 @@ require('lazy').setup({
       vim.keymap.set('n', '<Down><Up>', '<Plug>(zoom-toggle)', { silent = true })
     end,
   },
-  -- {
-  --   'kabbamine/vzoom.vim',
-  --   init = function()
-  --     vim.keymap.set('n', '<Down><Up>', '<Plug>(vzoom)')
-  --   end,
-  -- },
+  {
+    'windwp/nvim-ts-autotag',
+    config = function()
+      require('nvim-ts-autotag').setup {
+        opts = {
+          -- Defaults
+          enable_close = true, -- Auto close tags
+          enable_rename = true, -- Auto rename pairs of tags
+          enable_close_on_slash = false, -- Auto close on trailing </
+        },
+        -- Also override individual filetype configs, these take priority.
+        -- Empty by default, useful if one of the "opts" global settings
+        -- doesn't work well in a specific filetype
+        per_filetype = {
+          ['html'] = {
+            enable_close = false,
+          },
+        },
+      }
+    end,
+  },
   -- {
   --   'chentoast/live.nvim',
   --   init = function()
