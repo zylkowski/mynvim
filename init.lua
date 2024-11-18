@@ -96,6 +96,26 @@ vim.api.nvim_create_user_command('CheckReds', function()
   end
 end, { desc = 'Test your colors' })
 
+vim.api.nvim_create_user_command('Arr', function(opts)
+  local x = tonumber(opts.args:match '^(%d+)')
+  local y = tonumber(opts.args:match '%s+(%d+)$')
+
+  if not x or not y then
+    vim.api.nvim_err_writeln 'Invalid arguments. Usage: :Arr x y (e.g., :Arr 2 3)'
+    return
+  end
+
+  -- Generate the 2D array as a string
+  local array = ' [\n'
+  for i = 1, y do
+    array = array .. '    [' .. string.rep('_,', x - 1) .. '_],\n'
+  end
+  array = array .. ' ]'
+
+  -- Insert the array at the cursor position
+  vim.api.nvim_put(vim.split(array, '\n'), 'c', true, true)
+end, { nargs = 1 })
+
 --========================= KEYMAPS =======================
 --
 -- Those Keymaps should be independent of Plugins
@@ -256,15 +276,41 @@ end
 -- NOTE: nice way to escape lots of plugins like diffview and flog
 -- vim.keymap.set('n', '<Esc><Esc>', ':tabc<CR>')
 
+vim.keymap.set('n', '<leader>qa', function()
+  vim.fn.setqflist({
+    {
+      filename = vim.fn.expand '%',
+      lnum = vim.fn.line '.',
+      col = vim.fn.col '.',
+      text = vim.fn.getline '.',
+    },
+  }, 'a')
+  vim.cmd 'botright copen | wincmd p'
+end, { desc = '[Q]uickfix [A]dd' })
+vim.keymap.set('n', '<leader>qr', function()
+  local qflist = vim.fn.getqflist()
+  local idx = vim.fn.getqflist({ idx = 0 }).idx
+
+  if idx > 0 and idx <= #qflist then
+    table.remove(qflist, idx)
+    vim.fn.setqflist(qflist, 'r')
+    vim.notify('Removed entry at index ' .. idx, vim.log.levels.INFO)
+  else
+    vim.notify('Invalid quickfix entry', vim.log.levels.ERROR)
+  end
+end, { desc = '[Q]uickfix [R]emove' })
 -- Diagnostic keymaps
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous [D]iagnostic message' })
 vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = 'Go to next [D]iagnostic message' })
 vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Show diagnostic [E]rror messages' })
 
-vim.keymap.set('n', '<leader>qq', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
+-- vim.keymap.set('n', '<leader>qq', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
 vim.keymap.set('n', ']q', ':cn<cr>', { desc = 'Go to next [Q]uickfix list' })
 vim.keymap.set('n', '[q', ':cp<cr>', { desc = 'Go to next [Q]uickfix list' })
-vim.keymap.set('n', '<leader>qc', ':ccl<cr>', { desc = '[Q]uickfix [C]lose' })
+vim.keymap.set('n', '<leader>qc', function()
+  vim.cmd 'ccl'
+  vim.fn.setqflist({}, 'r')
+end, { desc = '[Q]uickfix [C]lose' })
 vim.keymap.set('n', '<leader>qf', function()
   local curr_qf_list = vim.fn.getqflist()
 
@@ -2068,7 +2114,13 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>h', ':lua require("replacer").run()<cr>', { silent = true })
     end,
   },
-  'jeetsukumaran/vim-indentwise',
+  {
+    'jeetsukumaran/vim-indentwise',
+    init = function()
+      vim.keymap.set({ 'n', 'v' }, '<M-m>', '<Plug>(IndentWiseNextEqualIndentNoJList)')
+      vim.keymap.set({ 'n', 'v' }, '<M-,>', '<Plug>(IndentWisePreviousEqualIndentNoJList)')
+    end,
+  },
   {
     'dhruvasagar/vim-zoom',
     init = function()
@@ -2125,7 +2177,7 @@ require('lazy').setup({
   -- require 'kickstart.plugins.debug',
   require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
-  require 'kickstart.plugins.autopairs',
+  -- require 'kickstart.plugins.autopairs',
   -- require 'kickstart.plugins.neo-tree',
   -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
 
