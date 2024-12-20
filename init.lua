@@ -14,8 +14,8 @@ vim.g.have_nerd_font = true -- Set to true if you have a Nerd Font installed
 -- Sync clipboard between OS and Neovim.
 -- Remove this option if you want your OS clipboard to remain independent.
 vim.opt.clipboard = 'unnamedplus' --  See `:help 'clipboard'`
-vim.opt.updatetime = 80 -- update time
-vim.opt.timeoutlen = 80 -- Decrease mapped sequence wait time : Displays which-key popup sooner
+vim.opt.updatetime = 250 -- update time
+vim.opt.timeoutlen = 1000 -- Decrease mapped sequence wait time : Displays which-key popup sooner
 vim.opt.number = true
 vim.opt.relativenumber = true
 vim.opt.termguicolors = true -- yes use tempr gui colors
@@ -40,6 +40,7 @@ vim.opt.hlsearch = true -- Set highlight on search, but clear on pressing <Esc> 
 vim.opt.numberwidth = 3
 vim.opt.autoread = true
 vim.opt.laststatus = 3 -- better looking horizontal window split borders
+vim.opt.fillchars:append { diff = '' } -- { diff = '/' } -- fillchars for diffview?
 -- vim.o.autochdir = true
 
 vim.opt.tabstop = 4
@@ -95,6 +96,35 @@ vim.api.nvim_create_user_command('CheckReds', function()
     vim.api.nvim_buf_add_highlight(0, 0, hl_name, idx - 1, 0, -1)
   end
 end, { desc = 'Test your colors' })
+
+-- My dumb custom workspac linting thing
+-- NOTE: currently only set up for tsc + eslint in a node.js project
+vim.api.nvim_create_user_command('Lint', function()
+  local runner = require 'lint-runner'
+
+  -- run tsc and eslint in parallel
+  local tsc = require 'linters_tsc'
+  local eslint = require 'linters_eslint'
+  runner.run_linter(tsc)
+  runner.run_linter(eslint)
+end, { desc = 'workspace lint' })
+
+vim.keymap.set('n', '<leader>F', function()
+  local runner = require 'lint-runner'
+
+  local namespaces = runner.get_namespaces()
+
+  local pos = vim.api.nvim_win_get_cursor(0)
+  local lnum = pos[1] - 1
+
+  for _, namespace in ipairs(namespaces) do
+    local rem_diagnostics = vim.tbl_filter(function(e)
+      return e.lnum ~= lnum
+    end, vim.diagnostic.get(0, { namespace = namespace }))
+    vim.diagnostic.reset(namespace, 0)
+    vim.diagnostic.set(namespace, 0, rem_diagnostics)
+  end
+end, { desc = 'LINT mark as [F]ixed' })
 
 vim.api.nvim_create_user_command('Arr', function(opts)
   local x = tonumber(opts.args:match '^(%d+)')
@@ -190,64 +220,37 @@ vim.keymap.set('v', '<leader>sc', '"hy:%s/<C-r>h//gc<left><left><left>', { desc 
 vim.keymap.set('v', '<leader>sa', '"hy:%s/<C-r>h/<C-r>h/gc<left><left><left>', { desc = '[S]ubstitute [A]ppend' })
 vim.keymap.set('v', '<leader>ss', ':s/\\%V', { desc = '[S]ub[s]titute' })
 
--- vim.keymap.set('n', '*', '/<C-R><C-W><cr>N', { desc = 'highlight all occurrences of current word' })
+-- NOTE: like * but doesn't move you around
+vim.keymap.set('n', '*', '/<C-R><C-W><cr>N', { desc = 'highlight all occurrences of current word' })
 -- vim.keymap.set('n', '<C-q>', '<C-v>')
 
-vim.keymap.set('i', '<C-H>', '<C-W>')
-
-vim.keymap.set('v', '<leader>n', ': norm ', { desc = '[N]ormal mode' })
-
--- vim.keymap.set('n', 'yp', 'yy<cr>kp<cr>k', { desc = '[Y]ank [P]aste - Duplicate Line' })
-
-vim.keymap.set('n', '<leader>dp', ':lua print(vim.fn.getcwd())<cr>')
-
--- vim.keymap.set('n', 'p', '"0p', { silent = true }) -- when using `p` always put last yanked text
--- vim.keymap.set('n', 'P', '"0P', { silent = true })
--- vim.keymap.set('n', 'dp', '"*p', { silent = true }) -- when using `dp` always put last deleted text
--- vim.keymap.set('n', 'dP', '"*P', { silent = true })
---
--- vim.keymap.set('n', 'p', 'p<leader>f') -- autoformat after paste/put -- Does not work ;_;
 vim.keymap.set('n', '<C-w>n', ':tabnew<cr>:terminal<cr>i', { desc = '[N]ew tab' })
 vim.keymap.set('n', '<C-w>\\', function()
   vim.cmd(math.floor(vim.fn.winwidth(0) * 0.45) .. 'vsplit')
   vim.cmd 'terminal'
-  -- vim.cmd 'startinsert'
 end, { desc = 'Vertical split' })
 vim.keymap.set('n', '<C-w>-', function()
   vim.cmd(math.floor(vim.fn.winheight(0) * 0.35) .. 'split')
   vim.cmd 'terminal'
-  -- vim.cmd 'startinsert'
 end, { desc = 'Horizontal split' })
--- vim.keymap.set('n', '<C-w>-', ':split<cr>:terminal<cr>i', { desc = 'Vertical split' })
 vim.keymap.set('t', '<esc>', '<C-\\><C-n>')
+
+-- windows navigation
 vim.keymap.set('n', '<Left>', '<C-w>h')
 vim.keymap.set('n', '<Right>', '<C-w>l')
 vim.keymap.set('n', '<Down>', '<C-w>j')
 vim.keymap.set('n', '<Up>', '<C-w>k')
 
--- vim.keymap.set({ 'v', 'n' }, '<M-h>', ':tabprevious<cr>')
+-- resizing windows
 vim.keymap.set({ 'v', 'n' }, '<M-y>', '<C-w>3-')
 vim.keymap.set({ 'v', 'n' }, '€', '<C-w>3<')
 vim.keymap.set({ 'v', 'n' }, '<M-i>', '<C-w>3>')
 vim.keymap.set({ 'v', 'n' }, 'ó', '<C-w>3+')
--- vim.keymap.set({ 'v', 'n' }, '<M-l>', ':tabNext<cr>')
 
 -- unbind default grn gra grr
 vim.keymap.del('n', 'grn')
 vim.keymap.del({ 'n', 'x' }, 'gra')
 vim.keymap.del('n', 'grr')
--- vim.keymap.set({ 'n', 'x' }, 's', '<Nop>')
--- vim.keymap.set({ 'n', 'v' }, 's', '<nop>')
--- vim.keymap.del('n', 'S')
-
-vim.keymap.set('n', '<leader>U', function()
-  local code = vim.fn.input 'u:'
-  local char = vim.fn.nr2char(code)
-  local _, col = unpack(vim.api.nvim_win_get_cursor(0))
-  local line = vim.api.nvim_get_current_line()
-  local new_line = line:sub(1, col) .. char .. line:sub(col + 1)
-  vim.api.nvim_set_current_line(new_line)
-end, { desc = 'insert unicode' })
 
 -- vim.keymap.set('n', '<M-j>', '12j')
 -- vim.keymap.set('n', '<M-k>', '12k')
@@ -276,7 +279,7 @@ end
 -- NOTE: nice way to escape lots of plugins like diffview and flog
 -- vim.keymap.set('n', '<Esc><Esc>', ':tabc<CR>')
 
-vim.keymap.set('n', '<leader>qa', function()
+vim.keymap.set('n', '<leader>qp', function()
   vim.fn.setqflist({
     {
       filename = vim.fn.expand '%',
@@ -285,9 +288,9 @@ vim.keymap.set('n', '<leader>qa', function()
       text = vim.fn.getline '.',
     },
   }, 'a')
-  vim.cmd 'botright copen | wincmd p'
-end, { desc = '[Q]uickfix [A]dd' })
-vim.keymap.set('n', '<leader>qr', function()
+  -- vim.cmd 'botright copen | wincmd p'
+end, { desc = '[Q]uickfix [P]ut' })
+vim.keymap.set('n', '<leader>qd', function()
   local qflist = vim.fn.getqflist()
   local idx = vim.fn.getqflist({ idx = 0 }).idx
 
@@ -298,32 +301,36 @@ vim.keymap.set('n', '<leader>qr', function()
   else
     vim.notify('Invalid quickfix entry', vim.log.levels.ERROR)
   end
-end, { desc = '[Q]uickfix [R]emove' })
+end, { desc = '[Q]uickfix [D]elete entry' })
+
+vim.keymap.set('n', '<leader>qr', ':cexpr []<cr>', { desc = '[Q]uickfix [R]remove list' })
+
 -- Diagnostic keymaps
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous [D]iagnostic message' })
 vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = 'Go to next [D]iagnostic message' })
 vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Show diagnostic [E]rror messages' })
 
 -- vim.keymap.set('n', '<leader>qq', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
+vim.keymap.set('n', '<leader>qo', ':vertical cwindow<cr>:vertical resize 90<cr>', { desc = 'Open [Q]uickfix list' })
 vim.keymap.set('n', ']q', ':cn<cr>', { desc = 'Go to next [Q]uickfix list' })
 vim.keymap.set('n', '[q', ':cp<cr>', { desc = 'Go to next [Q]uickfix list' })
 vim.keymap.set('n', '<leader>qc', function()
   vim.cmd 'ccl'
-  vim.fn.setqflist({}, 'r')
+  -- vim.fn.setqflist({}, 'r')
 end, { desc = '[Q]uickfix [C]lose' })
-vim.keymap.set('n', '<leader>qf', function()
-  local curr_qf_list = vim.fn.getqflist()
-
-  -- try reading :help getqflist-examples
-  local items = vim.fn.getqflist { id = 0, items = 0 }
-  print(vim.inspect(items))
-  -- for i in items do
-  --   print(i)
-  -- end
-  -- for i = 0, len(curr_qf_list) do
-  --   print(curr_qf_list[i].user_data)
-  -- end
-end)
+-- vim.keymap.set('n', '<leader>qf', function()
+--   local curr_qf_list = vim.fn.getqflist()
+--
+--   -- try reading :help getqflist-examples
+--   local items = vim.fn.getqflist { id = 0, items = 0 }
+--   print(vim.inspect(items))
+--   -- for i in items do
+--   --   print(i)
+--   -- end
+--   -- for i = 0, len(curr_qf_list) do
+--   --   print(curr_qf_list[i].user_data)
+--   -- end
+-- end)
 
 -- function _G.set_terminal_keymaps()
 --   local opts = { buffer = 0 }
@@ -602,54 +609,54 @@ require('lazy').setup({
   -- after the plugin has been loaded:
   --  config = function() ... end
 
-  { -- Useful plugin to show you pending keybinds.
-    'folke/which-key.nvim',
-    event = 'VimEnter', -- Sets the loading event to 'VimEnter'
-    config = function() -- This is the function that runs, AFTER loading
-      require('which-key').setup {
-
-        win = {
-          border = 'rounded', -- none, single, double, shadow
-        },
-      }
-
-      -- Document existing key chains
-      require('which-key').add {
-
-        { '<leader>c', group = '[C]ode' },
-        { '<leader>c_', hidden = true },
-        { '<leader>d', group = '[D]ocument' },
-        { '<leader>d_', hidden = true },
-        { '<leader>g', group = '[G]it' },
-        { '<leader>g_', hidden = true },
-        { '<leader>h', group = 'Git [H]unk' },
-        { '<leader>h_', hidden = true },
-        { '<leader>r', group = '[R]ename' },
-        { '<leader>r_', hidden = true },
-        { '<leader>s', group = '[S]earch' },
-        { '<leader>s_', hidden = true },
-        { '<leader>t', group = '[T]oggle' },
-        { '<leader>t_', hidden = true },
-        { '<leader>w', group = '[W]orkspace' },
-        { '<leader>w_', hidden = true },
-        -- ['<leader>c'] = { name = '[C]ode', _ = 'which_key_ignore' },
-        -- ['<leader>d'] = { name = '[D]ocument', _ = 'which_key_ignore' },
-        -- ['<leader>r'] = { name = '[R]ename', _ = 'which_key_ignore' },
-        -- ['<leader>s'] = { name = '[S]earch', _ = 'which_key_ignore' },
-        -- ['<leader>w'] = { name = '[W]orkspace', _ = 'which_key_ignore' },
-        -- ['<leader>t'] = { name = '[T]oggle', _ = 'which_key_ignore' },
-        -- ['<leader>h'] = { name = 'Git [H]unk', _ = 'which_key_ignore' },
-        -- ['<leader>g'] = { name = '[G]it', _ = 'which_key_ignore' },
-      }
-      -- visual mode
-      require('which-key').add({
-        { '<leader>h', desc = 'Git [H]unk', mode = 'v' },
-        { '<leader>s', desc = '[S]ubstitute', mode = 'v' },
-        -- ['<leader>h'] = { 'Git [H]unk' },
-        -- ['<leader>s'] = { '[S]ubstitute' },
-      }, { mode = 'v' })
-    end,
-  },
+  -- { -- Useful plugin to show you pending keybinds.
+  --   'folke/which-key.nvim',
+  --   event = 'VimEnter', -- Sets the loading event to 'VimEnter'
+  --   config = function() -- This is the function that runs, AFTER loading
+  --     require('which-key').setup {
+  --
+  --       win = {
+  --         border = 'rounded', -- none, single, double, shadow
+  --       },
+  --     }
+  --
+  --     -- Document existing key chains
+  --     require('which-key').add {
+  --
+  --       { '<leader>c', group = '[C]ode' },
+  --       { '<leader>c_', hidden = true },
+  --       { '<leader>d', group = '[D]ocument' },
+  --       { '<leader>d_', hidden = true },
+  --       { '<leader>g', group = '[G]it' },
+  --       { '<leader>g_', hidden = true },
+  --       { '<leader>h', group = 'Git [H]unk' },
+  --       { '<leader>h_', hidden = true },
+  --       { '<leader>r', group = '[R]ename' },
+  --       { '<leader>r_', hidden = true },
+  --       { '<leader>s', group = '[S]earch' },
+  --       { '<leader>s_', hidden = true },
+  --       { '<leader>t', group = '[T]oggle' },
+  --       { '<leader>t_', hidden = true },
+  --       { '<leader>w', group = '[W]orkspace' },
+  --       { '<leader>w_', hidden = true },
+  --       -- ['<leader>c'] = { name = '[C]ode', _ = 'which_key_ignore' },
+  --       -- ['<leader>d'] = { name = '[D]ocument', _ = 'which_key_ignore' },
+  --       -- ['<leader>r'] = { name = '[R]ename', _ = 'which_key_ignore' },
+  --       -- ['<leader>s'] = { name = '[S]earch', _ = 'which_key_ignore' },
+  --       -- ['<leader>w'] = { name = '[W]orkspace', _ = 'which_key_ignore' },
+  --       -- ['<leader>t'] = { name = '[T]oggle', _ = 'which_key_ignore' },
+  --       -- ['<leader>h'] = { name = 'Git [H]unk', _ = 'which_key_ignore' },
+  --       -- ['<leader>g'] = { name = '[G]it', _ = 'which_key_ignore' },
+  --     }
+  --     -- visual mode
+  --     require('which-key').add({
+  --       { '<leader>h', desc = 'Git [H]unk', mode = 'v' },
+  --       { '<leader>s', desc = '[S]ubstitute', mode = 'v' },
+  --       -- ['<leader>h'] = { 'Git [H]unk' },
+  --       -- ['<leader>s'] = { '[S]ubstitute' },
+  --     }, { mode = 'v' })
+  --   end,
+  -- },
 
   -- NOTE: Plugins can specify dependencies.
   --
@@ -726,6 +733,9 @@ require('lazy').setup({
               ['<c-d>'] = require('telescope.actions').delete_buffer,
             },
           },
+          cache_picker = {
+            num_pickers = 10,
+          },
         },
         pickers = {},
         extensions = {
@@ -757,7 +767,7 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sdw', function()
         builtin.diagnostics { severity = vim.diagnostic.severity.WARN }
       end, { desc = '[S]earch [D]iagnostics [W]arning' })
-      vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
+      vim.keymap.set('n', '<leader>sr', builtin.pickers, { desc = '[S]earch [R]esume' })
       vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
       vim.keymap.set('n', '<leader>sl', builtin.highlights, { desc = '[S]earch High[L]ights' })
       vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
@@ -956,7 +966,9 @@ require('lazy').setup({
           map('gt', require('telescope.builtin').lsp_type_definitions, '[G]oto [T]ype definition')
 
           -- Find references for the word under your cursor.
-          map('gr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
+          map('gr', function()
+            require('telescope.builtin').lsp_references { show_line = false }
+          end, '[G]oto [R]eferences')
 
           -- Jump to the implementation of the word under your cursor.
           --  Useful when your language has ways of declaring types without an actual implementation.
@@ -978,22 +990,34 @@ require('lazy').setup({
           -- -- Rename the variable under your cursor.
           -- --  Most Language Servers support renaming across files, etc.
           -- map('<leader>rn', vim.lsp.buf.rename, '[R]e[n]ame')
-
           map('<leader>rn', function()
-            local res = vim.lsp.buf_request_sync(0, 'textDocument/hover', vim.lsp.util.make_position_params(), 200)[1]
-            if res and not res.error then
+            local cursor_pos = vim.api.nvim_win_get_cursor(0)
+
+            local hover_res = vim.lsp.buf_request_sync(0, 'textDocument/hover', vim.lsp.util.make_position_params(), 200)
+
+            if not hover_res then
+              return
+            end
+
+            local hover = hover_res[1]
+
+            if hover and not hover.error and hover.result and hover.result.range then
               --- @class I.Loc
               --- @field character integer
               --- @field line integer
+
               local file_buf = vim.api.nvim_get_current_buf()
-              local s = res.result.range['start'] --- @type I.Loc
-              local e = res.result.range['end'] --- @type I.Loc
+
+              local s = hover.result.range['start'] --- @type I.Loc
+              local e = hover.result.range['end'] --- @type I.Loc
               local old_name = vim.api.nvim_buf_get_text(0, s.line, s.character, e.line, e.character, {})[1]
+
               local row = vim.fn.winline()
               local col = vim.fn.wincol()
               local buf = vim.api.nvim_create_buf(false, true)
               local win = vim.api.nvim_open_win(buf, false, {
                 relative = 'win',
+                title = ' new name ',
                 row = row,
                 col = col,
                 width = 25,
@@ -1001,6 +1025,7 @@ require('lazy').setup({
                 border = 'rounded',
                 style = 'minimal',
               })
+
               vim.api.nvim_set_current_win(win)
               vim.api.nvim_buf_set_lines(0, 0, 2, false, { old_name })
               vim.keymap.set({ 'n' }, '<Esc><Esc>', ':q<cr>', { buffer = buf })
@@ -1011,10 +1036,27 @@ require('lazy').setup({
                   print 'no change'
                   return
                 end
+                if #new_name == 0 then
+                  print 'cannot name to empty string'
+                  return
+                end
+
+                -- custom handler to avoid race conditions, we want to do some extra
+                -- pos renaming logic, like going back to normal mode, and positioning
+                -- the cursor where it was
+                local original_handler = vim.lsp.handlers['textDocument/rename']
+                vim.lsp.handlers['textDocument/rename'] = function(err, result, ctx, config)
+                  if original_handler then
+                    original_handler(err, result, ctx, config)
+                  end
+                  if not err and result then
+                    vim.cmd.stopi()
+                    cursor_pos[2] = cursor_pos[2] + 1
+                    vim.api.nvim_win_set_cursor(0, cursor_pos)
+                  end
+                  vim.lsp.handlers['textDocument/rename'] = original_handler
+                end
                 vim.lsp.buf.rename(new_name, { bufnr = file_buf })
-                vim.schedule(function()
-                  vim.cmd 'stopinsert'
-                end)
               end, { buffer = buf })
             end
           end, '[R]e[n]ame')
@@ -1284,6 +1326,19 @@ require('lazy').setup({
       local luasnip = require 'luasnip'
       luasnip.config.setup {}
 
+      local types = require 'cmp.types'
+      ---@type table<integer, integer>
+      local modified_priority = {
+        [types.lsp.CompletionItemKind.Variable] = types.lsp.CompletionItemKind.Method,
+        [types.lsp.CompletionItemKind.Snippet] = 0, -- top
+        [types.lsp.CompletionItemKind.Keyword] = 0, -- top
+        [types.lsp.CompletionItemKind.Text] = 100, -- bottom
+      }
+      ---@param kind integer: kind of completion entry
+      local function modified_kind(kind)
+        return modified_priority[kind] or kind
+      end
+
       cmp.setup {
         snippet = {
           expand = function(args)
@@ -1361,20 +1416,48 @@ require('lazy').setup({
         },
         sources = {
           { name = 'nvim_lsp' },
+          { name = 'nvim_lsp_signature_help' },
           { name = 'luasnip' },
           { name = 'path' },
         },
-        -- sorting = {
-        --   comparators = {
-        --     cmp.config.compare.offset,
-        --     cmp.config.compare.exact,
-        --     cmp.config.compare.score,
-        --     cmp.config.compare.kind,
-        --     -- cmp.config.compare.sort_text,
-        --     cmp.config.compare.length,
-        --     cmp.config.compare.order,
-        --   },
-        -- },
+        sorting = {
+          comparators = {
+            cmp.config.compare.offset,
+            cmp.config.compare.exact,
+            function(entry1, entry2) -- sort by length ignoring "=~"
+              local len1 = string.len(string.gsub(entry1.completion_item.label, '[=~()_]', ''))
+              local len2 = string.len(string.gsub(entry2.completion_item.label, '[=~()_]', ''))
+              if len1 ~= len2 then
+                return len1 - len2 < 0
+              end
+            end,
+            cmp.config.compare.recently_used,
+            function(entry1, entry2) -- sort by cmp.config.compare kind (Variable, Function etc)
+              local kind1 = modified_kind(entry1:get_kind())
+              local kind2 = modified_kind(entry2:get_kind())
+              if kind1 ~= kind2 then
+                return kind1 - kind2 < 0
+              end
+            end,
+            function(entry1, entry2) -- score by lsp, if available
+              local t1 = entry1.completion_item.sortText
+              local t2 = entry2.completion_item.sortText
+              if t1 ~= nil and t2 ~= nil and t1 ~= t2 then
+                return t1 < t2
+              end
+            end,
+            cmp.config.compare.score,
+            cmp.config.compare.order,
+          },
+          -- comparators = {
+          --   cmp.config.compare.recently_used,
+          --   cmp.config.compare.score,
+          --   cmp.config.compare.offset,
+          --   cmp.config.compare.exact,
+          --   -- cmp.config.compare.sort_text,
+          --   cmp.config.compare.kind,
+          -- },
+        },
       }
     end,
   },
@@ -1851,7 +1934,6 @@ require('lazy').setup({
       -- - sd'   - [S]urround [D]elete [']quotes
       -- - sr)'  - [S]urround [R]eplace [)] [']
       require('mini.surround').setup()
-
       -- -- Simple and easy statusline.
       -- --  You could remove this setup call if you don't like it,
       -- --  and try some other statusline plugin
@@ -2010,7 +2092,10 @@ require('lazy').setup({
   {
     'nvim-treesitter/nvim-treesitter-context',
     opts = {
+      -- enable = false,
       multiline_threshold = 1,
+      separator = '─',
+      -- mode = 'topline',
     },
     init = function()
       vim.keymap.set('n', '[c', function()
@@ -2101,16 +2186,8 @@ require('lazy').setup({
   },
   {
     'gabrielpoca/replacer.nvim',
+    opts = { rename_files = false },
     init = function()
-      -- vim.api.nvim_create_autocmd('BufWinEnter', {
-      --   desc = 'Start off where you left off',
-      --   group = vim.api.nvim_create_augroup('replacer', { clear = true }),
-      --   -- NOTE: this is just the command '"  in lua [[ and ]] are similar to ``` in other languages
-      --   callback = function()
-      --     -- require('replacer').run { silent = true }
-      --     vim.cmd ':lua require("replacer").run()<cr>'
-      --   end,
-      -- })
       vim.keymap.set('n', '<leader>h', ':lua require("replacer").run()<cr>', { silent = true })
     end,
   },
