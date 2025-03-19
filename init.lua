@@ -14,8 +14,11 @@ vim.g.have_nerd_font = true -- Set to true if you have a Nerd Font installed
 -- Sync clipboard between OS and Neovim.
 -- Remove this option if you want your OS clipboard to remain independent.
 vim.opt.clipboard = 'unnamedplus' --  See `:help 'clipboard'`
-vim.opt.updatetime = 250 -- update time
-vim.opt.timeoutlen = 1000 -- Decrease mapped sequence wait time : Displays which-key popup sooner
+vim.opt.updatetime = 80 -- update time
+vim.opt.timeoutlen = 80 -- Decrease mapped sequence wait time : Displays which-key popup sooner
+-- if you don't use whichkey then use times below
+-- vim.opt.updatetime = 250 -- update time
+-- vim.opt.timeoutlen = 1000 -- Decrease mapped sequence wait time : Displays which-key popup sooner
 vim.opt.number = true
 vim.opt.relativenumber = true
 vim.opt.termguicolors = true -- yes use tempr gui colors
@@ -54,16 +57,17 @@ vim.filetype.add {
 }
 
 vim.diagnostic.config {
-  virtual_text = {
-    virt_text_pos = 'right_align', -- Make error highlights right aligned
-    underline = {
-      severity = vim.diagnostic.severity.WARN,
-    },
-    format = function()
-      return ''
-    end,
-    -- signs = { text = { [vim.diagnostic.severity.ERROR] = '❌', [vim.diagnostic.severity.WARN] = '⚠: ' } },
-  },
+  -- virtual_text = {
+  --   virt_text_pos = 'right_align', -- Make error highlights right aligned
+  --   underline = {
+  --     severity = vim.diagnostic.severity.WARN,
+  --   },
+  --   format = function()
+  --     return ''
+  --   end,
+  --   -- signs = { text = { [vim.diagnostic.severity.ERROR] = '❌', [vim.diagnostic.severity.WARN] = '⚠: ' } },
+  -- },
+  virtual_text = false,
   float = { scope = 'l' },
   severity_sort = true,
 }
@@ -155,7 +159,8 @@ end, { nargs = 1 })
 --========================= ESC BINDINGS ==================
 --=========================================================
 vim.keymap.set('n', '<Esc>', ':nohlsearch<CR>', { silent = true })
--- vim.keymap.set('n', '<Esc><Esc>', function()
+vim.keymap.set('i', '<Esc>]', '<Space>', { noremap = true, silent = true })
+-- vim.keymap.set('n', '<Esc><Esc>', function(
 --   local ntabs = #vim.api.nvim_list_tabpages()
 --   if ntabs <= 1 then
 --     return
@@ -206,6 +211,31 @@ local function buf_is_trivial(buf)
   return false
 end
 
+local function get_last_command()
+  local result = vim.fn.system 'tail -n 1 ~/.bash_history'
+  result = result:match '^%s*(.-)%s*$'
+  return result
+end
+
+local function rename_terminal_to_last_command()
+  vim.schedule(function()
+    vim.wait(200) -- need this otherwise vim is too faaaaaaaaaaaaaast
+    local last_cmd = get_last_command()
+    local buf_number = vim.api.nvim_get_current_buf()
+    if last_cmd then
+      vim.cmd('file term://' .. buf_number .. '//' .. last_cmd)
+    end
+  end)
+end
+
+vim.keymap.set('n', '<leader>w', function()
+  vim.wo.wrap = not vim.wo.wrap
+  print('Line wrap: ' .. (vim.wo.wrap and 'ON' or 'OFF'))
+end, { desc = 'Toggle line wrapping' })
+
+vim.api.nvim_create_user_command('RenameTerminal', rename_terminal_to_last_command, {})
+vim.keymap.set('t', '<Enter>', '<Enter><C-\\><C-n>:RenameTerminal<Enter>a', { silent = true })
+
 --========================= ESC BINDINGS ==================
 --=========================================================
 
@@ -246,6 +276,9 @@ vim.keymap.set({ 'v', 'n' }, '<M-y>', '<C-w>3-')
 vim.keymap.set({ 'v', 'n' }, '€', '<C-w>3<')
 vim.keymap.set({ 'v', 'n' }, '<M-i>', '<C-w>3>')
 vim.keymap.set({ 'v', 'n' }, 'ó', '<C-w>3+')
+
+vim.keymap.set({ 'v', 'n' }, '<M-h>', ':tabp<CR>')
+vim.keymap.set({ 'v', 'n' }, 'ł', ':tabn<CR>') -- <M-l> on polish keyboard
 
 -- unbind default grn gra grr
 vim.keymap.del('n', 'grn')
@@ -311,7 +344,8 @@ vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = 'Go to next [D]iagn
 vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Show diagnostic [E]rror messages' })
 
 -- vim.keymap.set('n', '<leader>qq', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
-vim.keymap.set('n', '<leader>qo', ':vertical cwindow<cr>:vertical resize 90<cr>', { desc = 'Open [Q]uickfix list' })
+vim.keymap.set('n', '<leader>qo', 'cwindow<cr>', { desc = 'Open [Q]uickfix list' })
+-- vim.keymap.set('n', '<leader>qo', ':vertical cwindow<cr>:vertical resize 90<cr>', { desc = 'Open [Q]uickfix list' })
 vim.keymap.set('n', ']q', ':cn<cr>', { desc = 'Go to next [Q]uickfix list' })
 vim.keymap.set('n', '[q', ':cp<cr>', { desc = 'Go to next [Q]uickfix list' })
 vim.keymap.set('n', '<leader>qc', function()
@@ -402,32 +436,6 @@ vim.api.nvim_create_autocmd({ 'TermRequest' }, {
         vim.cmd.cd(dir)
       end
     end
-
-    local buf_number = vim.api.nvim_get_current_buf()
-    local cursor_pos = vim.api.nvim_win_get_cursor(0) -- Get cursor position in the current window
-    local last_cmd = ''
-    local line_number = cursor_pos[1]
-    local lines = vim.api.nvim_buf_get_lines(buf_number, line_number - math.max(1, math.min(120, line_number)), line_number, false)
-    -- vim.print('line num:' .. line_number)
-    -- vim.print('lookback: ', line_number - line_number <= 5 and 2 or 5)
-    -- vim.print('lines num:' .. #lines)
-    for i = #lines, 1, -1 do
-      if lines[i]:match '%$%s*(.*)' then -- Check for a non-empty line
-        last_cmd = lines[i]:match '%$%s*(.*)' or ''
-        break
-      end
-      -- vim.notify 'asda'
-    end
-
-    -- last_cmd = 'dupa'
-
-    -- local last_cmd = vim.api.nvim_buf_get_lines(buf_number, line_number - 1, line_number, false):match '%$%s*(.*)' or ''
-    -- vim.print('last cmd: ' .. last_cmd)
-    if last_cmd ~= '' then
-      -- vim.cmd('file term://' .. buf_number .. '//' .. last_cmd)
-    end
-    -- vim.print('Last lines' .. vim.api.nvim_buf_get_lines(buf_number, line_number - 1, line_number, false)[1])
-    --   vim.notify(vim.inspect(vim.b), true)
   end,
 })
 vim.api.nvim_create_autocmd({ 'bufenter', 'winenter', 'dirchanged' }, {
@@ -609,54 +617,56 @@ require('lazy').setup({
   -- after the plugin has been loaded:
   --  config = function() ... end
 
-  -- { -- Useful plugin to show you pending keybinds.
-  --   'folke/which-key.nvim',
-  --   event = 'VimEnter', -- Sets the loading event to 'VimEnter'
-  --   config = function() -- This is the function that runs, AFTER loading
-  --     require('which-key').setup {
-  --
-  --       win = {
-  --         border = 'rounded', -- none, single, double, shadow
-  --       },
-  --     }
-  --
-  --     -- Document existing key chains
-  --     require('which-key').add {
-  --
-  --       { '<leader>c', group = '[C]ode' },
-  --       { '<leader>c_', hidden = true },
-  --       { '<leader>d', group = '[D]ocument' },
-  --       { '<leader>d_', hidden = true },
-  --       { '<leader>g', group = '[G]it' },
-  --       { '<leader>g_', hidden = true },
-  --       { '<leader>h', group = 'Git [H]unk' },
-  --       { '<leader>h_', hidden = true },
-  --       { '<leader>r', group = '[R]ename' },
-  --       { '<leader>r_', hidden = true },
-  --       { '<leader>s', group = '[S]earch' },
-  --       { '<leader>s_', hidden = true },
-  --       { '<leader>t', group = '[T]oggle' },
-  --       { '<leader>t_', hidden = true },
-  --       { '<leader>w', group = '[W]orkspace' },
-  --       { '<leader>w_', hidden = true },
-  --       -- ['<leader>c'] = { name = '[C]ode', _ = 'which_key_ignore' },
-  --       -- ['<leader>d'] = { name = '[D]ocument', _ = 'which_key_ignore' },
-  --       -- ['<leader>r'] = { name = '[R]ename', _ = 'which_key_ignore' },
-  --       -- ['<leader>s'] = { name = '[S]earch', _ = 'which_key_ignore' },
-  --       -- ['<leader>w'] = { name = '[W]orkspace', _ = 'which_key_ignore' },
-  --       -- ['<leader>t'] = { name = '[T]oggle', _ = 'which_key_ignore' },
-  --       -- ['<leader>h'] = { name = 'Git [H]unk', _ = 'which_key_ignore' },
-  --       -- ['<leader>g'] = { name = '[G]it', _ = 'which_key_ignore' },
-  --     }
-  --     -- visual mode
-  --     require('which-key').add({
-  --       { '<leader>h', desc = 'Git [H]unk', mode = 'v' },
-  --       { '<leader>s', desc = '[S]ubstitute', mode = 'v' },
-  --       -- ['<leader>h'] = { 'Git [H]unk' },
-  --       -- ['<leader>s'] = { '[S]ubstitute' },
-  --     }, { mode = 'v' })
-  --   end,
-  -- },
+  { -- Useful plugin to show you pending keybinds.
+    'folke/which-key.nvim',
+    event = 'VimEnter', -- Sets the loading event to 'VimEnter'
+    config = function() -- This is the function that runs, AFTER loading
+      require('which-key').setup {
+
+        win = {
+          border = 'rounded', -- none, single, double, shadow
+        },
+      }
+
+      -- Document existing key chains
+      require('which-key').add {
+
+        { '<leader>c', group = '[C]ode' },
+        { '<leader>c_', hidden = true },
+        { '<leader>d', group = '[D]ocument' },
+        { '<leader>d_', hidden = true },
+        { '<leader>g', group = '[G]it' },
+        { '<leader>g_', hidden = true },
+        { '<leader>h', group = 'Git [H]unk' },
+        { '<leader>h_', hidden = true },
+        { '<leader>r', group = '[R]ename' },
+        { '<leader>r_', hidden = true },
+        { '<leader>s', group = '[S]earch' },
+        { '<leader>s_', hidden = true },
+        { '<leader>t', group = '[T]oggle' },
+        { '<leader>t_', hidden = true },
+        { '<leader>w', group = '[W]orkspace' },
+        { '<leader>w_', hidden = true },
+        { '<leader>q', group = '[Q]uickfix' },
+        { '<leader>q_', hidden = true },
+        -- ['<leader>c'] = { name = '[C]ode', _ = 'which_key_ignore' },
+        -- ['<leader>d'] = { name = '[D]ocument', _ = 'which_key_ignore' },
+        -- ['<leader>r'] = { name = '[R]ename', _ = 'which_key_ignore' },
+        -- ['<leader>s'] = { name = '[S]earch', _ = 'which_key_ignore' },
+        -- ['<leader>w'] = { name = '[W]orkspace', _ = 'which_key_ignore' },
+        -- ['<leader>t'] = { name = '[T]oggle', _ = 'which_key_ignore' },
+        -- ['<leader>h'] = { name = 'Git [H]unk', _ = 'which_key_ignore' },
+        -- ['<leader>g'] = { name = '[G]it', _ = 'which_key_ignore' },
+      }
+      -- visual mode
+      require('which-key').add({
+        { '<leader>h', desc = 'Git [H]unk', mode = 'v' },
+        { '<leader>s', desc = '[S]ubstitute', mode = 'v' },
+        -- ['<leader>h'] = { 'Git [H]unk' },
+        -- ['<leader>s'] = { '[S]ubstitute' },
+      }, { mode = 'v' })
+    end,
+  },
 
   -- NOTE: Plugins can specify dependencies.
   --
@@ -725,12 +735,12 @@ require('lazy').setup({
               ['<c-enter>'] = 'to_fuzzy_refine',
               ['<Esc>'] = require('telescope.actions').close,
               -- ['<Right>'] = require('telescope.actions').select_default,
-              ['<c-d>'] = require('telescope.actions').delete_buffer,
+              ['<c-e>'] = require('telescope.actions').delete_buffer,
             },
             n = {
               ['<Esc>'] = require('telescope.actions').close,
               -- ['<Right>'] = require('telescope.actions').select_default,
-              ['<c-d>'] = require('telescope.actions').delete_buffer,
+              ['<c-e>'] = require('telescope.actions').delete_buffer,
             },
           },
           cache_picker = {
@@ -756,6 +766,10 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sf', function()
         builtin.find_files { find_command = { 'rg', '--files', '--hidden', '-g', '!.git' } } --hidden = true
       end, { desc = '[S]earch [F]iles' })
+      vim.keymap.set('n', '<leader>sF', function()
+        builtin.find_files { find_command = { 'rg', '--files', '--hidden', '--no-ignore' } } --hidden = true
+      end, { desc = '[S]earch all [F]iles' })
+
       vim.keymap.set('n', '<leader>ss', builtin.builtin, { desc = '[S]earch [S]elect Telescope' })
       -- vim.keymap.set('n', '<leader>sw', builtin.grep_string, { desc = '[S]earch current [W]ord' })
       vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = '[S]earch by [G]rep' })
@@ -1149,7 +1163,20 @@ require('lazy').setup({
       local servers = {
         -- clangd = {},
         -- gopls = {},
-        pyright = {},
+        pyright = {
+          settings = {
+            python = {
+              analysis = {
+                typeCheckingMode = 'strict',
+                useLibraryCodeForTypes = true,
+                diagnosticSeverityOverrides = {
+                  reportUnknownMemberType = 'none',
+                  reportPrivateImportUsage = 'none',
+                },
+              },
+            },
+          },
+        },
         -- rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
         --
@@ -1162,6 +1189,9 @@ require('lazy').setup({
         rust_analyzer = {
           settings = {
             ['rust-analyzer'] = {
+              check = {
+                command = 'clippy',
+              },
               diagnostics = {
                 enable = true,
                 experimental = {
@@ -1213,6 +1243,8 @@ require('lazy').setup({
       --
       --  You can press `g?` for help in this menu.
       require('mason').setup()
+      vim.keymap.set('n', '<leader>mru', ':MasonInstall --force rust-analyzer<CR>', { silent = true })
+      vim.keymap.set('n', '<leader>mro', ':MasonInstall --force rust-analyzer@2024-03-11<CR>', { silent = true })
 
       -- You can add other tools here that you want Mason to install
       -- for you, so that they are available from within Neovim.
@@ -1356,6 +1388,8 @@ require('lazy').setup({
           ['<C-n>'] = cmp.mapping.select_next_item(),
           -- Select the [p]revious item
           ['<C-p>'] = cmp.mapping.select_prev_item(),
+          -- Show autocompletion after it disappears
+          ['<C-k>'] = cmp.mapping.complete(),
 
           -- Scroll the documentation window [b]ack / [f]orward
           ['<C-b>'] = cmp.mapping.scroll_docs(-4),
@@ -2226,6 +2260,27 @@ require('lazy').setup({
       }
     end,
   },
+  {
+    'linux-cultist/venv-selector.nvim',
+    dependencies = {
+      'neovim/nvim-lspconfig',
+      { 'nvim-telescope/telescope.nvim', branch = '0.1.x', dependencies = { 'nvim-lua/plenary.nvim' } },
+    },
+    lazy = false,
+    branch = 'regexp', -- This is the regexp branch, use this for the new version
+    config = function()
+      require('venv-selector').setup()
+    end,
+    keys = {
+      -- { ',v', '<cmd>VenvSelect<cr>' },
+    },
+  },
+  -- {
+  --   'ErichDonGubler/lsp_lines.nvim',
+  --   config = function()
+  --     require('lsp_lines').setup()
+  --   end,
+  -- },
   -- {
   --   'chentoast/live.nvim',
   --   init = function()
