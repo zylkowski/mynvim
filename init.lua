@@ -1,16 +1,12 @@
 -- MY FUCKING INIT ~Arek
+local utils = require 'utils'
 
 -- TODO:
 -- - rust-analyzer only works when in .rs file. I'd like it to work already when in folder with Cargo.toml
--- -
-
--- NOTE: :help localleader
 vim.g.mapleader = ' ' -- Set <space> as the leader key
 vim.g.maplocalleader = ' ' --- Set <space> as the local leader key
 vim.g.have_nerd_font = true -- Set to true if you have a Nerd Font installed
 
--- NOTE::help option-list
---
 -- Sync clipboard between OS and Neovim.
 -- Remove this option if you want your OS clipboard to remain independent.
 vim.opt.clipboard = 'unnamedplus' --  See `:help 'clipboard'`
@@ -19,7 +15,7 @@ vim.opt.clipboard = 'unnamedplus' --  See `:help 'clipboard'`
 -- if you don't use whichkey then use times below
 vim.opt.updatetime = 250 -- update time
 
-vim.opt.timeoutlen = 1000 -- Decrease mapped sequence wait time : Displays which-key popup sooner
+vim.opt.timeoutlen = 1000
 vim.cmd 'autocmd InsertLeave * set timeoutlen=1000'
 vim.cmd 'autocmd InsertEnter * set timeoutlen=0'
 
@@ -27,7 +23,6 @@ vim.opt.number = true
 vim.opt.relativenumber = true
 vim.opt.termguicolors = true -- yes use tempr gui colors
 vim.opt.wrap = false -- don't wrap lines
-vim.opt.fillchars:append { diff = '/' } -- fillchars for diffview?
 vim.opt.mouse = 'a' -- Enable mouse mode, can be useful for resizing splits for example!
 vim.opt.showmode = false -- Don't show the mode, since it's already in status line
 vim.opt.breakindent = true -- Enable break indent
@@ -61,16 +56,6 @@ vim.filetype.add {
 }
 
 vim.diagnostic.config {
-  -- virtual_text = {
-  --   virt_text_pos = 'right_align', -- Make error highlights right aligned
-  --   underline = {
-  --     severity = vim.diagnostic.severity.WARN,
-  --   },
-  --   format = function()
-  --     return ''
-  --   end,
-  --   -- signs = { text = { [vim.diagnostic.severity.ERROR] = '❌', [vim.diagnostic.severity.WARN] = '⚠: ' } },
-  -- },
   virtual_text = false,
   float = { scope = 'l' },
   severity_sort = true,
@@ -105,67 +90,18 @@ vim.keymap.set('n', '<leader>F', function()
   end
 end, { desc = 'LINT mark as [F]ixed' })
 
-vim.api.nvim_create_user_command('Arr', function(opts)
-  local x = tonumber(opts.args:match '^(%d+)')
-  local y = tonumber(opts.args:match '%s+(%d+)$')
-
-  if not x or not y then
-    vim.api.nvim_err_writeln 'Invalid arguments. Usage: :Arr x y (e.g., :Arr 2 3)'
-    return
-  end
-
-  -- Generate the 2D array as a string
-  local array = ' [\n'
-  for i = 1, y do
-    array = array .. '    [' .. string.rep('_,', x - 1) .. '_],\n'
-  end
-  array = array .. ' ]'
-
-  -- Insert the array at the cursor position
-  vim.api.nvim_put(vim.split(array, '\n'), 'c', true, true)
-end, { nargs = 1 })
+vim.api.nvim_create_user_command('Arr', utils.arr, { nargs = 1 })
 
 --========================= KEYMAPS =======================
+require 'ollama'
 
 --========================= ESC BINDINGS ==================
 vim.keymap.set('n', '<Esc>', ':nohlsearch<CR>', { silent = true })
 vim.keymap.set('i', '<Esc>]', '<Space>', { noremap = true, silent = true })
 
--- returns true if buffer is trivial
---- @param buf integer -- 0 is current buffer
---- @return boolean
-local function buf_is_trivial(buf)
-  local n = vim.api.nvim_buf_line_count(buf)
-  if n == 0 then
-    return true
-  end
-  if n == 1 then
-    local c = #vim.api.nvim_buf_get_lines(buf, 0, 1, true)[1]
-    if c == 0 then
-      return true
-    end
-  end
-  return false
-end
-
-local function get_last_command()
-  local result = vim.fn.system 'tail -n 1 ~/.bash_history'
-  result = result:match '^%s*(.-)%s*$'
-  return result
-end
-
-local function rename_terminal_to_last_command()
-  vim.schedule(function()
-    vim.wait(200) -- need this otherwise vim is too faaaaaaaaaaaaaast
-    local last_cmd = get_last_command()
-    local buf_number = vim.api.nvim_get_current_buf()
-    if last_cmd then
-      vim.cmd('file term://' .. buf_number .. '//' .. last_cmd)
-    end
-  end)
-end
-vim.api.nvim_create_user_command('RenameTerminal', rename_terminal_to_last_command, {})
+vim.api.nvim_create_user_command('RenameTerminal', utils.rename_terminal_to_last_command, {})
 vim.keymap.set('t', '<Enter>', '<Enter><C-\\><C-n>:RenameTerminal<Enter>a', { silent = true })
+vim.keymap.set('t', '<C-q><Esc>', '<Esc>', { silent = true })
 
 vim.keymap.set('n', '<leader>w', function()
   vim.wo.wrap = not vim.wo.wrap
@@ -245,46 +181,20 @@ do
   vim.keymap.set({ 'v', 'n' }, '<M-k>', jump 'k')
 end
 
-vim.keymap.set('n', '<leader>qp', function()
-  vim.fn.setqflist({
-    {
-      filename = vim.fn.expand '%',
-      lnum = vim.fn.line '.',
-      col = vim.fn.col '.',
-      text = vim.fn.getline '.',
-    },
-  }, 'a')
-  -- vim.cmd 'botright copen | wincmd p'
-end, { desc = '[Q]uickfix [P]ut' })
-vim.keymap.set('n', '<leader>qd', function()
-  local qflist = vim.fn.getqflist()
-  local idx = vim.fn.getqflist({ idx = 0 }).idx
-
-  if idx > 0 and idx <= #qflist then
-    table.remove(qflist, idx)
-    vim.fn.setqflist(qflist, 'r')
-    vim.notify('Removed entry at index ' .. idx, vim.log.levels.INFO)
-  else
-    vim.notify('Invalid quickfix entry', vim.log.levels.ERROR)
-  end
-end, { desc = '[Q]uickfix [D]elete entry' })
-
+local quickfix = require 'quickfix'
+vim.keymap.set('n', '<leader>qo', ':cwindow<cr><C-W>J', { desc = 'Open [Q]uickfix list' })
+vim.keymap.set('n', '<leader>qc', ':ccl<CR>', { desc = '[Q]uickfix [C]lose' })
+vim.keymap.set('n', '<leader>qp', quickfix.put, { desc = '[Q]uickfix [P]ut' })
+vim.keymap.set('n', '<leader>qd', quickfix.delete, { desc = '[Q]uickfix [D]elete entry' })
 vim.keymap.set('n', '<leader>qr', ':cexpr []<cr>', { desc = '[Q]uickfix [R]remove list' })
+vim.keymap.set('n', '<leader>qm', ':MarksQFListAll<cr>', { desc = '[Q]uickifx list add all [M]arks' })
+vim.keymap.set('n', ']q', ':cn<cr>', { desc = 'Go to next [Q]uickfix list' })
+vim.keymap.set('n', '[q', ':cp<cr>', { desc = 'Go to next [Q]uickfix list' })
 
 -- Diagnostic keymaps
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = 'Go to previous [D]iagnostic message' })
 vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = 'Go to next [D]iagnostic message' })
 vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Show diagnostic [E]rror messages' })
-
--- vim.keymap.set('n', '<leader>qq', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
-vim.keymap.set('n', '<leader>qo', ':cwindow<cr>', { desc = 'Open [Q]uickfix list' })
--- vim.keymap.set('n', '<leader>qo', ':vertical cwindow<cr>:vertical resize 90<cr>', { desc = 'Open [Q]uickfix list' })
-vim.keymap.set('n', ']q', ':cn<cr>', { desc = 'Go to next [Q]uickfix list' })
-vim.keymap.set('n', '[q', ':cp<cr>', { desc = 'Go to next [Q]uickfix list' })
-vim.keymap.set('n', '<leader>qc', function()
-  vim.cmd 'ccl'
-  -- vim.fn.setqflist({}, 'r')
-end, { desc = '[Q]uickfix [C]lose' })
 
 -- NOTE: swap lines like in vscode
 --
@@ -295,11 +205,6 @@ end, { desc = '[Q]uickfix [C]lose' })
 vim.keymap.set('n', '<C-k>', ':m-2<cr>', { desc = 'swap line with line above' }) -- vscode <alt> + <down>
 vim.keymap.set('n', '<C-j>', ':m+1<cr>', { desc = 'swap line with line below' }) -- vscode <alt> + <up>
 
--- -- NOTE: Jump between tabs using 'Alt + number'
--- for i = 1, 9 do
---   vim.keymap.set('n', '<M-' .. i .. '>', i .. 'gt', { desc = '[T]ab ' .. i })
--- end
---
 -- useful for figuring out what higlight groups are relevant for stuff under cursor
 vim.keymap.set('n', '<leader>I', function()
   vim.show_pos()
@@ -329,33 +234,8 @@ vim.api.nvim_create_autocmd({ 'TermEnter', 'TermLeave' }, {
   end,
 })
 
--- Add this to your .bashrc in order to make the following autocommand to work. It enables OSC7 signaling
--- function print_osc7() {
---   printf "\033]7;file://$HOSTNAME/$PWD\033\\"
--- }
--- # PROMPT_COMMAND='$(print_osc7)${PROMPT_COMMAND:+;$PROMPT_COMMAND}'
-vim.api.nvim_create_autocmd({ 'TermRequest' }, {
-  callback = function(e)
-    -- vim.print(vim.v.termrequest)
-    if string.sub(vim.v.termrequest, 1, 4) == '\x1b]7;' then
-      local dir = string.gsub(vim.v.termrequest, '\x1b]7;file://[^/]*', '')
-      if vim.fn.isdirectory(dir) == 0 then
-        return
-      end
-      vim.api.nvim_buf_set_var(e.buf, 'last_osc7_payload', dir)
-      if vim.api.nvim_get_current_buf() == e.buf then
-        vim.cmd.cd(dir)
-      end
-    end
-  end,
-})
-vim.api.nvim_create_autocmd({ 'bufenter', 'winenter', 'dirchanged' }, {
-  callback = function(e)
-    if vim.b.last_osc7_payload ~= nil and vim.fn.isdirectory(vim.b.last_osc7_payload) == 1 then
-      vim.cmd.cd(vim.b.last_osc7_payload)
-    end
-  end,
-})
+-- OSC7 support
+require 'osc7'
 
 -- Highlight when yanking (copying) text
 --  Try it with `yap` in normal mode
@@ -379,68 +259,6 @@ vim.opt.rtp:prepend(lazypath)
 
 -- =================================== HEX COLORS =============================
 
-local hlgs = {}
-
-local my_ns = vim.api.nvim_create_namespace 'arek_hl'
---- works by searching for string of the form "#rrggbb"
---- keeps a list of created highlght groups and reuses
---- them, ... only searches in the current visible part
---- of the buffer, and only upates on changes
-local function hex_color_highlight()
-  local top = vim.fn.line 'w0'
-  local bot = vim.fn.line 'w$'
-
-  --- @type table<string, string>
-  ---
-  ---
-  -- local hlgs = vim.g.hex_highlight_groups
-  if not hlgs then
-    hlgs = {}
-  end
-
-  local text = vim.api.nvim_buf_get_lines(0, top, bot, true)
-
-  vim.api.nvim_buf_clear_namespace(0, my_ns, 0, -1)
-  vim.api.nvim_win_set_hl_ns(0, my_ns)
-
-  for idx, line in pairs(text) do
-    local offset = 1
-    for m in line:gmatch '["\']#%x%x%x%x%x%x["\']' do
-      local loc = line:find(m, offset, true)
-      offset = loc + 9
-      local row = idx + top
-      local col_start = loc
-      local col_end = offset
-
-      local hlg = false
-      local sm = m:sub(3, 8)
-      for _, c_hlg in pairs(hlgs) do
-        if c_hlg == sm then
-          hlg = true
-          break
-        end
-      end
-
-      if not hlg then
-        vim.api.nvim_set_hl(my_ns, sm, { fg = '#' .. sm })
-        hlgs[#hlgs + 1] = sm
-      end
-
-      if col_start and col_end then
-        vim.api.nvim_buf_add_highlight(0, my_ns, sm, row - 1, col_start - 1, col_end - 1)
-      end
-    end
-  end
-end
-
--- todo: should add textchanged
--- "#aaaaaa" "#ffaabb"
-vim.api.nvim_create_autocmd({ 'winenter', 'winscrolled' }, {
-  callback = function()
-    hex_color_highlight()
-  end,
-})
-
 require('lazy').setup({
   'tpope/vim-sleuth', -- Detect tabstop and shiftwidth automatically
 
@@ -450,82 +268,12 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>u', ':UndotreeToggle<CR>:UndotreeFocus<CR>', { desc = 'Toggle [U]ndotree' })
     end,
   },
-
   {
     'chentoast/marks.nvim',
     opts = {},
   },
-
-  -- NOTE: Plugins can also be added by using a table,
-  -- with the first argument being the link and the following
-  -- keys can be used to configure plugin behavior/loading/etc.
-  --
-  -- Use `opts = {}` to force a plugin to be loaded.
-  --
-  --  This is equivalent to:
-  --    require('Comment').setup({})
-
   -- "gc" to comment visual regions/lines
   { 'numToStr/Comment.nvim', opts = {} },
-
-  -- { -- Useful plugin to show you pending keybinds.
-  --   'folke/which-key.nvim',
-  --   event = 'VimEnter', -- Sets the loading event to 'VimEnter'
-  --   config = function() -- This is the function that runs, AFTER loading
-  --     require('which-key').setup {
-  --
-  --       win = {
-  --         border = 'rounded', -- none, single, double, shadow
-  --       },
-  --     }
-  --
-  --     -- Document existing key chains
-  --     require('which-key').add {
-  --
-  --       { '<leader>c', group = '[C]ode' },
-  --       { '<leader>c_', hidden = true },
-  --       { '<leader>d', group = '[D]ocument' },
-  --       { '<leader>d_', hidden = true },
-  --       { '<leader>g', group = '[G]it' },
-  --       { '<leader>g_', hidden = true },
-  --       { '<leader>h', group = 'Git [H]unk' },
-  --       { '<leader>h_', hidden = true },
-  --       { '<leader>r', group = '[R]ename' },
-  --       { '<leader>r_', hidden = true },
-  --       { '<leader>s', group = '[S]earch' },
-  --       { '<leader>s_', hidden = true },
-  --       { '<leader>t', group = '[T]oggle' },
-  --       { '<leader>t_', hidden = true },
-  --       { '<leader>w', group = '[W]orkspace' },
-  --       { '<leader>w_', hidden = true },
-  --       { '<leader>q', group = '[Q]uickfix' },
-  --       { '<leader>q_', hidden = true },
-  --       -- ['<leader>c'] = { name = '[C]ode', _ = 'which_key_ignore' },
-  --       -- ['<leader>d'] = { name = '[D]ocument', _ = 'which_key_ignore' },
-  --       -- ['<leader>r'] = { name = '[R]ename', _ = 'which_key_ignore' },
-  --       -- ['<leader>s'] = { name = '[S]earch', _ = 'which_key_ignore' },
-  --       -- ['<leader>w'] = { name = '[W]orkspace', _ = 'which_key_ignore' },
-  --       -- ['<leader>t'] = { name = '[T]oggle', _ = 'which_key_ignore' },
-  --       -- ['<leader>h'] = { name = 'Git [H]unk', _ = 'which_key_ignore' },
-  --       -- ['<leader>g'] = { name = '[G]it', _ = 'which_key_ignore' },
-  --     }
-  --     -- visual mode
-  --     require('which-key').add({
-  --       { '<leader>h', desc = 'Git [H]unk', mode = 'v' },
-  --       { '<leader>s', desc = '[S]ubstitute', mode = 'v' },
-  --       -- ['<leader>h'] = { 'Git [H]unk' },
-  --       -- ['<leader>s'] = { '[S]ubstitute' },
-  --     }, { mode = 'v' })
-  --   end,
-  -- },
-
-  -- NOTE: Plugins can specify dependencies.
-  --
-  -- The dependencies are proper plugin specifications as well - anything
-  -- you do for a plugin at the top level, you can do for a dependency.
-  --
-  -- Use the `dependencies` key to specify the dependencies of a particular plugin
-
   { -- Fuzzy Finder (files, lsp, etc)
     'nvim-telescope/telescope.nvim',
     event = 'VimEnter',
@@ -555,7 +303,7 @@ require('lazy').setup({
           },
           mappings = {
             i = {
-              ['<c-enter>'] = 'to_fuzzy_refine',
+              ['<c-f>'] = 'to_fuzzy_refine',
               ['<Esc>'] = require('telescope.actions').close,
               -- ['<Right>'] = require('telescope.actions').select_default,
               ['<c-e>'] = require('telescope.actions').delete_buffer,
@@ -582,8 +330,52 @@ require('lazy').setup({
       pcall(require('telescope').load_extension, 'fzf')
       pcall(require('telescope').load_extension, 'ui-select')
 
+      local telescope = require 'telescope'
+      local pickers = require 'telescope.pickers'
+      local finders = require 'telescope.finders'
+      local sorters = require 'telescope.sorters'
+      local actions = require 'telescope.actions'
+      local action_state = require 'telescope.actions.state'
+
+      -- Register the extension under the name "my_history"
+      telescope.extensions = telescope.extensions or {}
+      telescope.extensions.shell_history = {
+        shell = function()
+          local history_file = vim.fn.expand '~/.bash_history' -- or ~/.bash_history
+          local seen = {}
+          local lines = {}
+
+          for line in io.lines(history_file) do
+            line = line:gsub('^: [^;]*; ', '')
+            if not seen[line] then
+              seen[line] = true
+              table.insert(lines, line)
+            end
+          end
+
+          pickers
+            .new({}, {
+              prompt_title = 'Shell History',
+              finder = finders.new_table { results = lines },
+              sorter = sorters.get_generic_fuzzy_sorter(),
+              attach_mappings = function(prompt_bufnr, map)
+                actions.select_default:replace(function()
+                  local selection = action_state.get_selected_entry()
+                  actions.close(prompt_bufnr)
+                  if selection then
+                    vim.api.nvim_put({ selection[1] }, 'c', true, true)
+                  end
+                end)
+                return true
+              end,
+            })
+            :find()
+        end,
+      }
+
       -- See `:help telescope.builtin`
       local builtin = require 'telescope.builtin'
+      vim.keymap.set('n', '<leader>st', telescope.extensions.shell_history.shell, { desc = '[S]earch [T]erminal' })
       vim.keymap.set('n', '<leader>sh', builtin.help_tags, { desc = '[S]earch [H]elp' })
       vim.keymap.set('n', '<leader>sk', builtin.keymaps, { desc = '[S]earch [K]eymaps' })
       vim.keymap.set('n', '<leader>sf', function()
@@ -671,7 +463,7 @@ require('lazy').setup({
             local win = wins[3]
 
             local buf = vim.api.nvim_win_get_buf(wins[3])
-            if buf_is_trivial(buf) then
+            if utils.buf_is_trivial(buf) then
               print 'no change'
               -- vim.cmd [[:DiffviewClose]]
               return
@@ -699,7 +491,7 @@ require('lazy').setup({
             -- NOTE at this point in "time" our current window
             --      is the the active window in the diffview, diffview hooks may impact which window this is
 
-            if buf_is_trivial(0) then
+            if utils.buf_is_trivial(0) then
               print 'no changes'
               -- vim.cmd [[:DiffviewClose]]
               return
@@ -856,6 +648,18 @@ require('lazy').setup({
           end
         end,
       })
+      -- vim.api.nvim_create_autocmd('BufEnter', {
+      --   pattern = '*.rs',
+      --   callback = function()
+      --     local params = vim.lsp.util.make_position_params()
+      --
+      --     -- Trigger hover (safe no-op)
+      --     vim.lsp.buf_request(0, 'textDocument/hover', params, function() end)
+      --
+      --     -- Optionally trigger documentSymbol too (slightly more expensive)
+      --     vim.lsp.buf_request(0, 'textDocument/documentSymbol', { textDocument = { uri = vim.uri_from_bufnr(0) } }, function() end)
+      --   end,
+      -- })
 
       -- LSP servers and clients are able to communicate to each other what features they support.
       --  By default, Neovim doesn't support everything that is in the LSP specification.
@@ -891,7 +695,7 @@ require('lazy').setup({
             },
           },
         },
-        ts_ls = {},
+        tsserver = {},
         rust_analyzer = {
           settings = {
             ['rust-analyzer'] = {
@@ -913,19 +717,21 @@ require('lazy').setup({
               completion = {
                 callSnippet = 'Replace',
               },
-              -- You can toggle below to ignore Lua_LS's noisy `missing-fields` warnings
-              -- diagnostics = { disable = { 'missing-fields' } },
               runtime = {
-                -- Tell the language server which version of Lua you're using
-                -- (most likely LuaJIT in the case of Neovim)
                 version = 'LuaJIT',
               },
-              -- Make the server aware of Neovim runtime files
               workspace = {
                 checkThirdParty = false,
                 library = {
                   vim.env.VIMRUNTIME,
                 },
+              },
+              diagnostics = {
+                globals = { 'vim' },
+                disable = { 'redefined-local' },
+              },
+              telemetry = {
+                enable = false,
               },
             },
           },
@@ -971,9 +777,9 @@ require('lazy').setup({
       require('mason-lspconfig').setup {
         handlers = {
           function(server_name)
-            if server_name == 'tsserver' then
-              server_name = 'ts_ls'
-            end
+            -- if server_name == 'tsserver' then
+            --   server_name = 'ts_ls'
+            -- end
             local server = servers[server_name] or {}
             -- This handles overriding only values explicitly passed
             -- by the server configuration above. Useful when disabling
@@ -1028,6 +834,12 @@ require('lazy').setup({
         typescriptreact = { 'prettier' },
       },
     },
+    init = function()
+      vim.keymap.set('n', '<leader>cl', function()
+        local formatters = require('conform').list_formatters()
+        print('formatters:', vim.inspect(formatters))
+      end, { desc = 'list formatters for current buffer' })
+    end,
   },
   { -- Autocompletion
     'hrsh7th/nvim-cmp',
@@ -1200,441 +1012,15 @@ require('lazy').setup({
     end,
   },
   -- Highlight todo, notes, etc in comments
-  { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
+  -- { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
   { -- Collection of various small independent plugins/modules
     'echasnovski/mini.nvim',
     config = function()
       do
         -- everything related to color theme goes here inside this block
         require('mini.colors').setup {}
-        --
-        -- ---@type Colorscheme
-        -- local theme = MiniColors.get_colorscheme 'retrobox'
-
-        ---@type table<string, string>
-        local dune = {
-          background = '#181818',
-          base = '#845A40',
-          base_toned = '#a8714d',
-          highlighted = '#efcfa0',
-          normal = '#b8a586',
-          disabled = '#847762',
-          attention1 = '#83A598',
-          attention2 = '#6d86b2',
-          important = '#bf6079',
-          important_highlighted = '#df8099',
-          important_darker = '#E7545E',
-          place = '#8EC07C',
-          pear2 = '#637f59',
-
-          attention3 = '#a8bda0',
-          attention4 = '#95ad8c',
-          gray = '#404040',
-          mid_gray = '#4a4a4a',
-          light_gray = '#505050',
-          dark_gray = '#253535',
-          black = '#101010',
-        }
-
-        local aqua_rusty = {
-          background = '#181818',
-          base = '#6B7D7D',
-          base_toned = '#8eaf9d',
-          highlighted = '#A6D8D4',
-          normal = '#b8a586',
-          disabled = '#847762',
-          attention1 = '#F7b34B',
-          attention2 = '#f0b36f',
-          important = '#f17c74',
-          important_highlighted = '#fb6c64',
-          important_darker = '#E7545E',
-          place = '#8EC07C',
-          pear2 = '#637f59',
-
-          attention3 = '#a8bda0',
-          attention4 = '#95ad8c',
-          gray = '#404040',
-          mid_gray = '#4a4a4a',
-          light_gray = '#505050',
-          dark_gray = '#253535',
-          black = '#101010',
-        }
-
-        local hulk = {
-          background = '#011628',
-          base = '#4d699e',
-          base_toned = '#3d79ae',
-          highlighted = '#b6c8b4',
-          normal = '#b8a5a6',
-          disabled = '#847772',
-          attention1 = '#a065b2',
-          attention2 = '#d499b9',
-          important = '#f17c74',
-          important_highlighted = '#fb6c64',
-          important_darker = '#E7545E',
-          place = '#8EC07C',
-          pear2 = '#637f59',
-
-          attention3 = '#e8c1c5',
-          attention4 = '#ffb1d4',
-          gray = '#404040',
-          mid_gray = '#4a4a4a',
-          light_gray = '#505050',
-          dark_gray = '#253535',
-          black = '#101010',
-        }
-
-        local ebony = {
-          background = '#181818',
-          base = '#657256',
-          base_toned = '#d3b88c',
-          highlighted = '#b6c8b4',
-          normal = '#b8a586',
-          disabled = '#847772',
-          attention1 = '#F7b35B',
-          attention2 = '#d499b9',
-          important = '#f17c74',
-          important_highlighted = '#fb6c64',
-          important_darker = '#E7545E',
-          place = '#8EC07C',
-          pear2 = '#637f59',
-
-          attention3 = '#d3426e',
-          attention4 = '#e63946',
-          gray = '#404040',
-          mid_gray = '#4a4a4a',
-          light_gray = '#505050',
-          dark_gray = '#253535',
-          black = '#101010',
-        }
-
-        local dunelike = {
-          background = '#181818',
-          base = '#657256',
-          base_toned = '#d3b88c',
-          highlighted = '#b6c8a4',
-          normal = '#b8a586',
-          disabled = '#847772',
-          attention1 = '#ffcfa0',
-          attention2 = '#d499b9',
-          important = '#f17c74',
-          important_highlighted = '#fb6c64',
-          important_darker = '#E7545E',
-          place = '#8EC07C',
-          pear2 = '#637f59',
-
-          attention3 = '#E7545E',
-          attention4 = '#e63946',
-          gray = '#404040',
-          mid_gray = '#4a4a4a',
-          light_gray = '#505050',
-          dark_gray = '#253535',
-          black = '#101010',
-        }
-
-        local mogilska = {
-          background = '#181818',
-          base = '#a64236',
-          base_toned = '#c65246',
-          highlighted = '#f3b88a',
-          normal = '#b8a586',
-          disabled = '#847772',
-          attention1 = '#8EC07C',
-          attention2 = '#7e8f60',
-          important = '#f17c74',
-          important_highlighted = '#fb6c64',
-          important_darker = '#E7545E',
-          place = '#d499b9',
-          pear2 = '#a46999',
-
-          attention3 = '#E7545E',
-          attention4 = '#e63946',
-          gray = '#404040',
-          mid_gray = '#4a4a4a',
-          light_gray = '#505050',
-          dark_gray = '#253535',
-          black = '#101010',
-        }
-
-        local puple = {
-          background = '#181825',
-          base = '#8468a9',
-          base_toned = '#a46999',
-          highlighted = '#f3b88a',
-          normal = '#b8a586',
-          disabled = '#847772',
-          attention1 = '#8EC07C',
-          attention2 = '#7e8f60',
-          important = '#f17c74',
-          important_highlighted = '#fb6c64',
-          important_darker = '#E7545E',
-          place = '#d499b9',
-          pear2 = '#a46999',
-
-          attention3 = '#E7545E',
-          attention4 = '#e63946',
-          gray = '#404040',
-          mid_gray = '#4a4a4a',
-          light_gray = '#505050',
-          dark_gray = '#253535',
-          black = '#101010',
-        }
-        local puple_insert = {
-          -- background = '#FAFAFA',
-          background = '#1f1f1f',
-          base = '#846889',
-          base_toned = '#845979',
-          highlighted = '#e3a66a',
-          normal = '#b8a586',
-          disabled = '#847772',
-          attention1 = '#8EC07C',
-          attention2 = '#7e8f60',
-          important = '#f17c74',
-          important_highlighted = '#fb6c64',
-          important_darker = '#E7545E',
-          place = '#d499b9',
-          pear2 = '#a46999',
-
-          attention3 = '#E7545E',
-          attention4 = '#e63946',
-          gray = '#404040',
-          mid_gray = '#4a4a4a',
-          light_gray = '#505050',
-          dark_gray = '#253535',
-          black = '#101010',
-        }
-
-        local c = puple
-
-        local function set_theme(c, theme)
-          ---@type table<string, vim.api.keyset.highlight>
-          local hl = theme.groups
-
-          -- sets several highlight, if any already existed it gets overwritten entirely
-          ---@param names string | table<string>
-          ---@param data vim.api.keyset.highlight
-          local function set_hl(names, data)
-            if type(names) == 'string' then
-              set_hl({ names }, data)
-              return
-            end
-            for _, name in pairs(names) do
-              hl[name] = data
-            end
-          end
-
-          -- tweaks an existing highlight, only adds or merges does not overwrite
-          ---@param names string | table<string>
-          ---@param data vim.api.keyset.highlight
-          local function tweak_hl(names, data)
-            if type(names) == 'string' then
-              tweak_hl({ names }, data)
-              return
-            end
-            for _, name in pairs(names) do
-              hl[name] = hl[name] or {}
-              hl[name] = vim.tbl_extend('force', hl[name], data)
-            end
-          end
-          tweak_hl('Search', { fg = c.attention1 })
-          set_hl('Visual', { bg = c.dark_gray })
-          tweak_hl('IncSearch', { fg = c.highlighted })
-          tweak_hl('DiagnosticUnderlineError', { undercurl = true })
-          set_hl('DiagnosticUnnecessary', { fg = c.disabled })
-
-          set_hl('NormalFloat', { bg = nil })
-
-          set_hl('Normal', { fg = c.normal, bg = c.background })
-
-          set_hl('SignColumn', hl.Normal)
-
-          set_hl({
-            'directory',
-            'statement',
-            'function',
-            '@tag',
-            '@function.builtin',
-            '@tag.builtin',
-            '@lsp.type.formatspecifier',
-          }, { fg = c.attention1 })
-
-          set_hl({
-            'delimiter',
-            'keyword',
-            'repeat',
-            'conditional',
-            'operator',
-            '@keyword.type',
-            'winseparator',
-            '@tag.delimiter',
-            '@constructor.lua',
-            'GitGraphHash',
-          }, { fg = c.base })
-
-          set_hl({
-            'Type',
-            'Number',
-            'Float',
-            'Boolean',
-            'String',
-            'Structure',
-            'Constant',
-            'GitSignsChange',
-            'CursorLineNr',
-            '@constructor',
-            '@type.builtin',
-            'GitGraphTimestamp',
-          }, { fg = c.highlighted })
-
-          set_hl({
-            'Typedef',
-          }, { fg = c.attention3 })
-
-          set_hl({
-            'Identifier',
-            '@markup.raw',
-            '@tag.attribute',
-            'markdownBlockQuote',
-            'GitGraphBranchMsg',
-          }, { fg = c.normal })
-
-          set_hl({
-            'Include',
-            'Label',
-            'Title',
-            'GitSignsAdd',
-            'LeapLabelPrimary',
-            '@lsp.type.namespace',
-            '@module',
-            'GitGraphAuthor',
-          }, { fg = c.place })
-
-          set_hl({
-            'LeapLabelPrimary',
-          }, { fg = c.black, bg = c.normal })
-
-          -- TODO: example todo
-          -- NOTE: example note
-          -- FIXME: example fixme
-          set_hl({
-            'TodoBgTODO',
-            'TodoBgNOTE',
-          }, { fg = c.gray, bg = c.place })
-
-          set_hl({
-            'TodoFgFIX',
-          }, { fg = c.important_darker })
-
-          set_hl({
-            'SpecialChar',
-            'GitSignsDelete',
-            '@constant.builtin',
-            '@lsp.type.lifetime',
-            '@lsp.typemod.keyword.async',
-            'Macro',
-          }, { fg = c.important })
-
-          set_hl({
-            'Comment',
-            'LeapBackdrop',
-          }, { fg = c.light_gray })
-
-          set_hl({
-            'TodoBgFIX',
-            'TodoBgFIXME',
-          }, { fg = c.gray, bg = c.important_darker })
-
-          set_hl('Special', { fg = c.base_toned })
-
-          set_hl('flogBranch0', { fg = '#458588' })
-          set_hl('flogBranch1', { fg = '#458588' })
-          set_hl('flogBranch2', { fg = '#689d6a' })
-          set_hl('flogBranch3', { fg = '#b16286' })
-          set_hl('flogBranch4', { fg = '#d79921' })
-          set_hl('flogBranch5', { fg = '#98971a' })
-          set_hl('flogBranch6', { fg = '#E7545E' })
-          set_hl('flogBranch7', { fg = '#ad6639' })
-          set_hl('flogBranch8', { fg = '#b53a35' })
-          set_hl('flogBranch9', { fg = '#d5651c' })
-
-          set_hl({
-            'DiffAdd',
-            'DiffChange',
-          }, { bg = '#003530' })
-
-          set_hl('DiffText', { bg = '#004040' })
-          set_hl('DiffDelete', { fg = '#F00000' })
-          set_hl('DiffviewDiffDeleteDim', { fg = '#F00000' })
-
-          set_hl({
-            'MiniStatuslineBranch',
-            'MiniStatuslineWorkspace',
-            'MiniStatuslineWorkspaceUnsaved',
-            'MiniStatuslineChanges',
-            'MiniStatuslineDiagnostics',
-            'MiniStatuslineFileinfo',
-          }, { bg = '#333333' })
-
-          tweak_hl('MiniStatuslineBranch', { fg = c.place })
-          tweak_hl('MiniStatuslineWorkspaceUnsaved', { fg = c.important_darker })
-          tweak_hl('MiniStatuslineChanges', { fg = c.highlighted })
-          tweak_hl('MiniStatuslineDiagnostics', { fg = c.attention1 })
-          tweak_hl('MiniStatuslineFileinfo', { fg = c.attention1 })
-
-          set_hl({
-            'MiniStatuslineModeNormal',
-            'MiniStatuslineModeVisual',
-            'MiniStatuslineModeInsert',
-          }, { fg = '#333333' })
-
-          tweak_hl('MiniStatuslineModeNormal', { bg = c.highlighted })
-          tweak_hl('MiniStatuslineModeVisual', { bg = c.important })
-          tweak_hl('MiniStatuslineModeInsert', { bg = c.attention1 })
-
-          ---@diagnostic disable-next-line: undefined-field
-          theme:apply()
-        end
-
-        -- vim.api.nvim_create_autocmd('CmdlineEnter', {
-        --   desc = 'Background change on entering insert mode',
-        --   group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = false }),
-        --   callback = function()
-        --     if buf_is_trivial(0) then
-        --       return
-        --     end
-        --     -- set_hl('Normal', { fg = c.white, bg = '#303235' })
-        --     set_theme(puple_term, MiniColors.get_colorscheme())
-        --   end,
-        -- })
-        -- vim.api.nvim_create_autocmd('CmdlineLeave', {
-        --   desc = 'Background change when leaving insert mode',
-        --   group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = false }),
-        --   callback = function()
-        --     -- set_hl('Normal', { fg = c.white, bg = c.background })
-        --     set_theme(puple, MiniColors.get_colorscheme())
-        --   end,
-        -- })
-        vim.api.nvim_create_autocmd({ 'InsertEnter', 'TermEnter' }, {
-          desc = 'Background change on entering insert mode',
-          group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = false }),
-          callback = function()
-            if buf_is_trivial(0) then
-              return
-            end
-            -- set_hl('Normal', { fg = c.white, bg = '#303235' })
-            set_theme(puple_insert, MiniColors.get_colorscheme())
-          end,
-        })
-        vim.api.nvim_create_autocmd({ 'InsertLeave', 'TermLeave' }, {
-          desc = 'Background change when leaving insert mode',
-          group = vim.api.nvim_create_augroup('arek-escape-insert', { clear = false }),
-          callback = function()
-            -- set_hl('Normal', { fg = c.white, bg = c.background })
-            set_theme(puple, MiniColors.get_colorscheme())
-          end,
-        })
-
-        set_theme(puple, MiniColors.get_colorscheme 'retrobox')
+        -- My own themes and autocommands around that
+        require 'themes'
       end
       -- Better Around/Inside textobjects
       --
@@ -1651,13 +1037,41 @@ require('lazy').setup({
       -- - sd'   - [S]urround [D]elete [']quotes
       -- - sr)'  - [S]urround [R]eplace [)] [']
       require('mini.surround').setup()
+
+      do
+        local hipatterns = require 'mini.hipatterns'
+
+        local keywords = {
+          { key = 'FIX', group = 'MiniHipatternsFixme' },
+          { key = 'FIXME', group = 'MiniHipatternsFixme' },
+          { key = 'HACK', group = 'MiniHipatternsHack' },
+          { key = 'WARN', group = 'MiniHipatternsHack' },
+          { key = 'TODO', group = 'MiniHipatternsTodo' },
+          { key = 'NOTE', group = 'MiniHipatternsNote' },
+        }
+
+        local highlighters = {
+          hex_color = hipatterns.gen_highlighter.hex_color(),
+        }
+
+        local bdrPattern = "[^a-zA-Z0-9'_()-]"
+
+        for _, kw in pairs(keywords) do
+          for _, key in pairs { kw.key, string.lower(kw.key) } do
+            highlighters[key] = { pattern = bdrPattern .. '%f[%w]()' .. key .. '()%f[%W]' .. bdrPattern, group = kw.group }
+            highlighters[key .. '_'] = { pattern = bdrPattern .. '%f[%w]()' .. key .. '()%f[%W]$', group = kw.group }
+          end
+        end
+
+        hipatterns.setup { highlighters = highlighters }
+      end
+
       -- -- Simple and easy statusline.
       -- --  You could remove this setup call if you don't like it,
       -- --  and try some other statusline plugin
       -- local statusline = require 'mini.statusline'
       -- -- set use_icons to true if you have a Nerd Font
       -- statusline.setup { use_icons = vim.g.have_nerd_font }
-
       do -- Simple and easy statusline.
         local statusline = require 'mini.statusline'
 
@@ -1672,6 +1086,7 @@ require('lazy').setup({
               local diagnostics = MiniStatusline.section_diagnostics { trunc_width = 75 }
               local lsp = MiniStatusline.section_lsp { trunc_width = 75 }
               local venv = (os.getenv 'VIRTUAL_ENV' or ''):match '([^/\\]+)$' or ''
+              local wrap = vim.wo.wrap
 
               -- local filename = MiniStatusline.section_filename { trunc_width = 140 }
               local filename = vim.fn.expand '%f'
@@ -1729,10 +1144,10 @@ require('lazy').setup({
                 { hl = 'MiniStatuslineDiagnostics', strings = { diagnostics, lsp } },
                 '%<', -- Mark general truncate point
                 { hl = filenam_hl, strings = { filename } },
-                { hl = filenam_hl, strings = { vim.fn['zoom#statusline']() } },
+                -- { hl = filenam_hl, strings = { vim.fn['zoom#statusline']() } },
                 '%=', -- End left alignment
                 { hl = 'MiniStatuslineFileinfo', strings = { fileinfo } },
-                { hl = mode_hl, strings = { search, location } },
+                { hl = mode_hl, strings = { search, location, wrap and '↵' or '' } },
               }
             end,
           },
@@ -1756,10 +1171,37 @@ require('lazy').setup({
   -- }, -- This plugin does not seem to work.
 
   {
+    'andymass/vim-matchup',
+    -- TODO: I do not think this lazy = false is necessary
+    lazy = false, -- or true with an event
+    config = function()
+      vim.g.matchup_matchparen_offscreen = {}
+    end,
+  },
+  {
     'nvim-treesitter/nvim-treesitter',
+    dependencies = {
+      'nvim-treesitter/nvim-treesitter-textobjects',
+    },
     build = ':TSUpdate',
     opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'vim', 'vimdoc' },
+      ensure_installed = {
+        'bash',
+        'make',
+        'terraform',
+        'c',
+        'dockerfile',
+        'rust',
+        'typescript',
+        'tsx',
+        'html',
+        'lua',
+        'markdown',
+        'vim',
+        'vimdoc',
+        'javascript',
+        'svelte',
+      },
       -- Autoinstall languages that are not installed
       auto_install = true,
       highlight = {
@@ -1768,6 +1210,12 @@ require('lazy').setup({
         --  If you are experiencing weird indenting issues, add the language to
         --  the list of additional_vim_regex_highlighting and disabled languages for indent.
         additional_vim_regex_highlighting = { 'ruby' },
+      },
+      -- for 'andymass/vim-matchup' integration so that it can use treesitter
+      matchup = {
+        enable = true, -- mandatory, enables treesitter integration
+        disable = { 'rust' },
+        disable_virtual_text = true,
       },
       -- indent = { enable = true, disable = { 'ruby' } },
     },
@@ -1877,7 +1325,7 @@ require('lazy').setup({
           -- 'mtime',
         },
       }
-      vim.keymap.set('n', '<leader>o', '<cmd>Oil .<CR>')
+      vim.keymap.set('n', '<leader>f', '<cmd>Oil .<CR>')
     end,
     -- keymaps = {
     --   ['<leader>\\'] = '<cmd>Oil<CR>',
@@ -1890,7 +1338,7 @@ require('lazy').setup({
     'gabrielpoca/replacer.nvim',
     opts = { rename_files = false },
     init = function()
-      vim.keymap.set('n', '<leader>h', ':lua require("replacer").run()<cr>', { silent = true })
+      vim.keymap.set('n', '<leader>qe', ':lua require("replacer").run()<cr>', { silent = true, desc = '[Q]uickfix edit' })
     end,
   },
   {
@@ -1900,13 +1348,13 @@ require('lazy').setup({
       vim.keymap.set({ 'n', 'v' }, '<M-,>', '<Plug>(IndentWisePreviousEqualIndentNoJList)')
     end,
   },
-  {
-    'dhruvasagar/vim-zoom',
-    init = function()
-      -- vim.keymap.del('n', '<C-w>m')
-      vim.keymap.set('n', '<Down><Up>', '<Plug>(zoom-toggle)', { silent = true })
-    end,
-  },
+  -- {
+  --   'dhruvasagar/vim-zoom',
+  --   init = function()
+  --     -- vim.keymap.del('n', '<C-w>m')
+  --     -- vim.keymap.set('n', '<Down><Up>', '<Plug>(zoom-toggle)', { silent = true })
+  --   end,
+  -- },
   {
     'windwp/nvim-ts-autotag',
     config = function()
@@ -1941,6 +1389,17 @@ require('lazy').setup({
     end,
     keys = {
       -- { ',v', '<cmd>VenvSelect<cr>' },
+    },
+  },
+  {
+    'hedyhli/outline.nvim',
+    lazy = true,
+    cmd = { 'Outline', 'OutlineOpen' },
+    keys = { -- Example mapping to toggle outline
+      { '<leader>o', '<cmd>Outline<CR>', desc = 'Toggle outline' },
+    },
+    opts = {
+      -- Your setup opts here
     },
   },
   require 'kickstart.plugins.indent_line',
