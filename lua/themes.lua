@@ -365,6 +365,8 @@ local function set_theme(c, theme)
   set_hl('DiffDelete', { fg = '#F00000' })
   set_hl('DiffviewDiffDeleteDim', { fg = '#F00000' })
 
+  set_hl('TreesitterContext', { bg = '#252532' })
+
   set_hl({
     'MiniStatuslineBranch',
     'MiniStatuslineWorkspace',
@@ -372,23 +374,32 @@ local function set_theme(c, theme)
     'MiniStatuslineChanges',
     'MiniStatuslineDiagnostics',
     'MiniStatuslineFileinfo',
-  }, { bg = '#333333' })
+  }, { fg = '#333333', reverse = true })
 
-  tweak_hl('MiniStatuslineBranch', { fg = c.place })
-  tweak_hl('MiniStatuslineWorkspaceUnsaved', { fg = c.important_darker })
-  tweak_hl('MiniStatuslineChanges', { fg = c.highlighted })
-  tweak_hl('MiniStatuslineDiagnostics', { fg = c.attention1 })
-  tweak_hl('MiniStatuslineFileinfo', { fg = c.attention1 })
+  tweak_hl('MiniStatuslineBranch', { bg = c.place })
+  tweak_hl('MiniStatuslineWorkspaceUnsaved', { bg = c.important_darker })
+  tweak_hl('MiniStatuslineChanges', { bg = c.highlighted })
+  tweak_hl('MiniStatuslineDiagnostics', { bg = c.attention1 })
+  tweak_hl('MiniStatuslineFileinfo', { bg = c.attention1 })
 
   set_hl({
     'MiniStatuslineModeNormal',
     'MiniStatuslineModeVisual',
     'MiniStatuslineModeInsert',
-  }, { fg = '#333333' })
+    'MiniStatuslineModeCommand',
+  }, { bg = '#333333' })
 
-  tweak_hl('MiniStatuslineModeNormal', { bg = c.highlighted })
-  tweak_hl('MiniStatuslineModeVisual', { bg = c.important })
-  tweak_hl('MiniStatuslineModeInsert', { bg = c.attention1 })
+  set_hl({
+    'MiniStatuslineWorkspace',
+  }, { bg = c.disabled, fg = '#333333', reverse = true })
+  set_hl({
+    'MiniStatuslineWorkspaceUnsaved',
+  }, { fg = c.attention3, bg = c.white, reverse = true })
+
+  tweak_hl('MiniStatuslineModeNormal', { fg = c.highlighted, reverse = true })
+  tweak_hl('MiniStatuslineModeVisual', { fg = c.important, reverse = true })
+  tweak_hl('MiniStatuslineModeInsert', { fg = c.attention1, reverse = true })
+  tweak_hl('MiniStatuslineModeCommand', { bg = c.attention1, reverse = true })
 
   ---@diagnostic disable-next-line: undefined-field
   theme:apply()

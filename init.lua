@@ -695,7 +695,7 @@ require('lazy').setup({
             },
           },
         },
-        tsserver = {},
+        ts_ls = {},
         rust_analyzer = {
           settings = {
             ['rust-analyzer'] = {
@@ -1248,7 +1248,7 @@ require('lazy').setup({
     opts = {
       -- enable = false,
       multiline_threshold = 1,
-      separator = '─',
+      -- separator = '─',
       -- mode = 'topline',
     },
     init = function()
@@ -1325,7 +1325,7 @@ require('lazy').setup({
           -- 'mtime',
         },
       }
-      vim.keymap.set('n', '<leader>f', '<cmd>Oil .<CR>')
+      vim.keymap.set('n', '<leader>i', '<cmd>Oil .<CR>')
     end,
     -- keymaps = {
     --   ['<leader>\\'] = '<cmd>Oil<CR>',
