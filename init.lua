@@ -511,13 +511,26 @@ require('lazy').setup({
     end,
   },
   {
+    -- `lazydev` configures Lua LSP for your Neovim config, runtime and plugins
+    -- used for completion, annotations and signatures of Neovim apis
+    'folke/lazydev.nvim',
+    ft = 'lua',
+    opts = {
+      library = {
+        -- Load luvit types when the `vim.uv` word is found
+        { path = '${3rd}/luv/library', words = { 'vim%.uv' } },
+      },
+    },
+  },
+  {
     'neovim/nvim-lspconfig',
     dependencies = {
-      { 'williamboman/mason.nvim', config = true }, -- NOTE: Must be loaded before dependants
-      'williamboman/mason-lspconfig.nvim',
+      { 'mason-org/mason.nvim', config = true }, -- NOTE: Must be loaded before dependants
+      'mason-org/mason-lspconfig.nvim',
       'WhoIsSethDaniel/mason-tool-installer.nvim',
       -- NOTE: `opts = {}` is the same as calling `require('fidget').setup({})`
       { 'j-hui/fidget.nvim', opts = {} },
+      { 'folke/lazydev.nvim', opts = {} },
     },
     config = function()
       vim.api.nvim_create_autocmd('LspAttach', {
@@ -723,16 +736,16 @@ require('lazy').setup({
               workspace = {
                 checkThirdParty = false,
                 library = {
-                  vim.env.VIMRUNTIME,
+                  vim.api.nvim_get_runtime_file('', true),
                 },
               },
               diagnostics = {
                 globals = { 'vim' },
                 disable = { 'redefined-local' },
               },
-              telemetry = {
-                enable = false,
-              },
+              -- telemetry = {
+              --   enable = false,
+              -- },
             },
           },
         },
