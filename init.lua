@@ -277,7 +277,7 @@ require('lazy').setup({
   { -- Fuzzy Finder (files, lsp, etc)
     'nvim-telescope/telescope.nvim',
     event = 'VimEnter',
-    branch = '0.1.x',
+    -- branch = 'master',
     dependencies = {
       'nvim-lua/plenary.nvim',
       {
@@ -357,7 +357,7 @@ require('lazy').setup({
             .new({}, {
               prompt_title = 'Shell History',
               finder = finders.new_table { results = lines },
-              sorter = sorters.get_generic_fuzzy_sorter(),
+              sorter = sorters.fuzzy_with_index_bias(),
               attach_mappings = function(prompt_bufnr, map)
                 actions.select_default:replace(function()
                   local selection = action_state.get_selected_entry()
@@ -443,7 +443,8 @@ require('lazy').setup({
 
       vim.keymap.set('n', '<leader>gp', ':Gitsigns preview_hunk<cr>', { desc = '[G]it [P]review hunk' })
       vim.keymap.set('n', '<leader>gr', ':Gitsigns reset_hunk<cr>', { desc = '[G]it [R]eset hunk' })
-      vim.keymap.set('n', '<leader>gb', ':Gitsigns toggle_current_line_blame<CR>', { desc = '[G]it [B]lame toggle' })
+      vim.keymap.set('n', '<leader>gb', ':Gitsigns toggle_current_line_blame<CR>', { desc = '[G]it line [B]lame toggle' })
+      vim.keymap.set('n', '<leader>gB', ':Gitsigns blame<CR>', { desc = '[G]it entire [B]lame toggle' })
       vim.keymap.set('n', '<leader>dt', ':Gitsigns diffthis<cr>', { desc = 'See changes in the current buffer' })
     end,
   },
@@ -558,6 +559,7 @@ require('lazy').setup({
             local hover_res = vim.lsp.buf_request_sync(0, 'textDocument/hover', vim.lsp.util.make_position_params(), 200)
 
             if not hover_res then
+              vim.print 'No hover result for rename'
               return
             end
 
@@ -717,9 +719,9 @@ require('lazy').setup({
               -- },
               diagnostics = {
                 enable = true,
-                experimental = {
-                  enable = true,
-                },
+                -- experimental = {
+                --   enable = true,
+                -- },
               },
             },
           },
@@ -776,7 +778,7 @@ require('lazy').setup({
       --
       --  You can press `g?` for help in this menu.
       require('mason').setup()
-      vim.keymap.set('n', '<leader>mru', ':MasonInstall --force rust-analyzer<CR>', { silent = true })
+      vim.keymap.set('n', '<leader>mru', ':MasonInstall --force rust-analyzer@2025-07-14<CR>', { silent = true })
       vim.keymap.set('n', '<leader>mro', ':MasonInstall --force rust-analyzer@2024-03-11<CR>', { silent = true })
 
       -- You can add other tools here that you want Mason to install
@@ -845,7 +847,16 @@ require('lazy').setup({
         javascript = { 'prettier' },
         typescript = { 'prettier' },
         typescriptreact = { 'prettier' },
+        html = { 'prettier' },
+        sql = { 'pg_format' },
       },
+      -- formatters = {
+      --   ['sql-formatter'] = {
+      --     command = 'sql-formatter',
+      --     args = { '--stdin' }, -- read from stdin
+      --     stdin = true,
+      --   },
+      -- },
     },
     init = function()
       vim.keymap.set('n', '<leader>cl', function()
@@ -963,12 +974,14 @@ require('lazy').setup({
           --
           -- <c-l> will move you to the right of each of the expansion locations.
           -- <c-h> is similar, except moving you backwards.
+          -- ['<right>'] = cmp.mapping(function()
           ['<C-l>'] = cmp.mapping(function()
             if luasnip.expand_or_locally_jumpable() then
               luasnip.expand_or_jump()
             end
           end, { 'i', 's' }),
           ['<C-h>'] = cmp.mapping(function()
+            -- ['<left>'] = cmp.mapping(function()
             if luasnip.locally_jumpable(-1) then
               luasnip.jump(-1)
             end
@@ -1257,7 +1270,8 @@ require('lazy').setup({
     end,
   },
   {
-    'nvim-treesitter/nvim-treesitter-context',
+    'isakbm/nvim-treesitter-context',
+    branch = 'enhancement-nearest-parent',
     opts = {
       -- enable = false,
       multiline_threshold = 1,
@@ -1265,9 +1279,17 @@ require('lazy').setup({
       -- mode = 'topline',
     },
     init = function()
-      vim.keymap.set('n', '[c', function()
+      -- vim.keymap.set('n', '[c', function()
+      --   require('treesitter-context').go_to_context(vim.v.count1)
+      -- end, { silent = true, desc = 'jump to line of parent scope in context' })
+
+      vim.keymap.set('n', '[C', function()
         require('treesitter-context').go_to_context(vim.v.count1)
-      end, { silent = true, desc = 'jump to line of parent context' })
+      end, { silent = true, desc = 'jump to line of parent scope in context' })
+
+      vim.keymap.set('n', '[c', function()
+        require('treesitter-context').go_to_parent(vim.v.count1)
+      end, { silent = true, desc = 'jump to line of parent scope' })
     end,
   },
   {
@@ -1314,6 +1336,13 @@ require('lazy').setup({
         '<leader>gl',
         function()
           require('gitgraph').draw({}, { all = true, max_count = 5000 })
+        end,
+        desc = 'GitGraph - Draw',
+      },
+      {
+        '<leader>gtl',
+        function()
+          require('gitgraph').draw({}, { max_count = 5000 })
         end,
         desc = 'GitGraph - Draw',
       },
@@ -1413,8 +1442,16 @@ require('lazy').setup({
     },
     opts = {
       -- Your setup opts here
+      outline_window = {
+        auto_jump = true,
+      },
+      keymaps = {
+        goto_location = 'o',
+        peek_location = '<cr>',
+      },
     },
   },
+  'brianhuster/unnest.nvim',
   require 'kickstart.plugins.indent_line',
 }, {
   ui = {

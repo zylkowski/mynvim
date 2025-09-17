@@ -1,7 +1,10 @@
 vim.keymap.set('v', '<leader>lc', ':lua OllamaReplace()<CR>', { noremap = true, silent = true })
 vim.keymap.set('n', '<leader>lp', ':lua OllamaPut()<CR>', { noremap = true, silent = true })
 vim.keymap.set('n', '<leader>lj', ':lua OllamaRandom()<CR>', { noremap = true, silent = true })
-vim.keymap.set('n', '<leader>lr', ':lua OllamaCodeReview()<CR>', { noremap = true, silent = true })
+vim.keymap.set('v', '<leader>lo', ':lua OllamaCodeReview()<CR>', { noremap = true, silent = true })
+
+local model = 'gemma3:27b'
+-- local model = 'qwen3:30b'
 
 function OllamaRandom()
   local bufnr = vim.api.nvim_get_current_buf()
@@ -170,7 +173,7 @@ end
 function ollama_change_code(content, prompt)
   local json_body = vim.fn.json_encode {
     stream = false,
-    model = 'gemma3:27b',
+    model = model,
     options = {
       temperature = 0,
       num_ctx = 4096,
@@ -210,7 +213,7 @@ function ollama_gen_code(prompt, temp, seed)
   seed = seed or math.random(1000000)
   local json_body = vim.fn.json_encode {
     stream = false,
-    model = 'gemma3:27b',
+    model = model,
     options = {
       seed = seed,
       temperature = temp,
@@ -245,7 +248,7 @@ end
 function ollama_code_review(content, prompt)
   local json_body = vim.fn.json_encode {
     stream = false,
-    model = 'gemma3:27b',
+    model = model,
     options = {
       temperature = 0,
       num_ctx = 4096,

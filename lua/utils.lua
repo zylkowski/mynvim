@@ -28,7 +28,8 @@ return {
       local last_cmd = get_last_command()
       local buf_number = vim.api.nvim_get_current_buf()
       if last_cmd then
-        vim.cmd('file term://' .. buf_number .. '//' .. last_cmd)
+        local safe_name = last_cmd:gsub(' ', '_'):gsub('/', '_'):gsub('|', '_')
+        vim.cmd('file term://' .. buf_number .. '//' .. safe_name)
       end
     end)
   end,

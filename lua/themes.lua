@@ -401,6 +401,8 @@ local function set_theme(c, theme)
   tweak_hl('MiniStatuslineModeInsert', { fg = c.attention1, reverse = true })
   tweak_hl('MiniStatuslineModeCommand', { bg = c.attention1, reverse = true })
 
+  tweak_hl('NormalFloat', { bg = '#252532' })
+
   ---@diagnostic disable-next-line: undefined-field
   theme:apply()
 end
