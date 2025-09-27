@@ -127,14 +127,25 @@ vim.keymap.set('n', '*', '/<C-R><C-W><cr>N', { desc = 'highlight all occurrences
 -- vim.keymap.set('n', '<C-q>', '<C-v>')
 
 vim.keymap.set('n', '<C-w>n', ':tabnew<cr>:terminal<cr>i', { desc = '[N]ew tab' })
+
 vim.keymap.set('n', '<C-w>\\', function()
   vim.cmd(math.floor(vim.fn.winwidth(0) * 0.45) .. 'vsplit')
   vim.cmd 'terminal'
 end, { desc = 'Vertical split' })
+
+vim.keymap.set('n', '<C-w><C-w>\\', function()
+  vim.cmd(math.floor(vim.fn.winwidth(0) * 0.45) .. 'vsplit')
+end, { desc = 'Vertical split same file' })
+
 vim.keymap.set('n', '<C-w>-', function()
   vim.cmd(math.floor(vim.fn.winheight(0) * 0.35) .. 'split')
   vim.cmd 'terminal'
 end, { desc = 'Horizontal split' })
+
+vim.keymap.set('n', '<C-w><C-w>-', function()
+  vim.cmd(math.floor(vim.fn.winheight(0) * 0.35) .. 'split')
+end, { desc = 'Horizontal split same file' })
+
 vim.keymap.set('t', '<esc>', '<C-\\><C-n>')
 
 -- windows navigation
