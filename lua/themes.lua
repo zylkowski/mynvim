@@ -146,7 +146,7 @@ local mogilska = {
 }
 
 local puple = {
-  background = '#181825',
+  background = '#000000',
   background_numberline = '#282838',
   base = '#8468a9',
   base_toned = '#a46999',
@@ -171,7 +171,7 @@ local puple = {
 }
 local puple_insert = {
   -- background = '#FAFAFA',
-  background = '#1f1f1f',
+  background = '#000000',
   background_numberline = '#282838',
   base = '#846889',
   base_toned = '#845979',
