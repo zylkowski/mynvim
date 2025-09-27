@@ -1454,6 +1454,7 @@ require('lazy').setup({
     opts = {
       -- Your setup opts here
       outline_window = {
+        position = 'left',
         auto_jump = true,
       },
       keymaps = {
